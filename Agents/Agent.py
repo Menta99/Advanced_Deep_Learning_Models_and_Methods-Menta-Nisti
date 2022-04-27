@@ -12,7 +12,7 @@ class Agent:
     def act(self, observation):
         raise NotImplementedError("act method needs to be implemented by subclasses")
 
-    def store(self, transition):
+    def store(self, initial_state, action, reward, final_state, terminal):
         raise NotImplementedError("store method needs to be implemented by subclasses")
 
     def learn(self):

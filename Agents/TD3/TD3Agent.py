@@ -61,7 +61,7 @@ class TD3Agent(Agent):
         self.epsilon_C = epsilon_C
 
         self.memory = PrioritizedReplayBuffer(self.memory_size, self.state_space_shape,
-                                              self.action_space_shape, self.memory_alpha)
+                                              self.action_number, self.memory_alpha)
 
         self.network_builder = NetworkBuilder()
         self.actor_net = self._init_network(self.actor_net_dict, 'actor_net', self.checkpoint_dir,

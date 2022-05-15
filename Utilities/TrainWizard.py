@@ -15,6 +15,7 @@ class TrainWizard:
         self.path = path
         self.episode_reward = 0
         self.episode_reward_history = []
+        self.eval_reward_history = []
         self.rewards_sample = None
         self.frame_count = 0
 
@@ -37,7 +38,8 @@ class TrainWizard:
                     break
 
                 if self.frame_count % self.evaluation_steps == 0:
-                    self.play_full_game('full_game_' + str(self.frame_count // 1000) + 'K')
+                    self.eval_reward_history.append((self.frame_count // 1000,
+                                                     self.play_full_game('full_game_' + str(self.frame_count // 1000) + 'K')))
 
             if reward is not None:
                 print(self.frame_count, self.episode_reward, self.agent._epsilon_scheduler())
@@ -74,6 +76,7 @@ class TrainWizard:
         self.save_game_gif(game_frame, file_name)
         self.agent.time_step = temp_time_step
         self.agent.min_epsilon = temp_min_epsilon
+        return score
 
     def save_game_gif(self, frames, file_name):
         images = [Image.fromarray(j) for j in frames]

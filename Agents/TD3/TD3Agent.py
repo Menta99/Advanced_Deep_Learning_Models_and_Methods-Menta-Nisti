@@ -165,8 +165,8 @@ class TD3Agent(Agent):
                                                  sample_weight=tf.expand_dims(weights, axis=-1))
 
         self.memory.update_priorities(indexes, tf.math.abs(td_error))
-        self._update_network_parameters(self.critic_1_net, tape, critic_loss)
-        self._update_network_parameters(self.critic_2_net, tape, critic_loss)
+        self._update_network(self.critic_1_net, tape, critic_loss)
+        self._update_network(self.critic_2_net, tape, critic_loss)
 
         self.learn_step_counter += 1
 
@@ -177,11 +177,15 @@ class TD3Agent(Agent):
                     self.actor_net(initial_states))
                 critic_1_q_value = tf.squeeze(self.critic_1_net(initial_states, new_actions), 1)
                 actor_loss = -tf.math.reduce_mean(critic_1_q_value * weights)
-            self._update_network_parameters(self.actor_net, tape, actor_loss)
+            self._update_network(self.actor_net, tape, actor_loss)
 
     def _softargmax(self, x, beta=1e10):
         x_range = tf.range(x.shape.as_list()[-1], dtype=x.dtype)
         return tf.reduce_sum(tf.nn.softmax(x * beta) * x_range, axis=-1)
+
+    def _update_network(self, network, tape, loss):
+        network_gradient = tape.gradient(loss, network.trainable_variables)
+        network.optimizer.apply_gradients(zip(network_gradient, network.trainable_variables))
 
     def save(self):
         print('Saing models and parameters...')

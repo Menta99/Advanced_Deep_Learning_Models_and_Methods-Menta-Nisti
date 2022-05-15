@@ -20,7 +20,7 @@ class SegmentTree:
             if mid + 1 <= start:
                 return self._reduce_helper(start, end, 2 * node + 1, mid + 1, node_end)
             else:
-                return self.operation(
+                return self._operation(
                     self._reduce_helper(start, mid, 2 * node, node_start, mid),
                     self._reduce_helper(mid + 1, end, 2 * node + 1, mid + 1, node_end)
                 )
@@ -53,7 +53,6 @@ class SumSegmentTree(SegmentTree):
         return super(SumSegmentTree, self).reduce(start, end)
 
     def retrieve(self, upperbound):
-        assert 0 <= upperbound <= self.sum() + 1e-5, "upperbound: {}".format(upperbound)
         idx = 1
 
         while idx < self.capacity:

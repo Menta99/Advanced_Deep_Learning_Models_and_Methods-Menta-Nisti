@@ -1,5 +1,6 @@
 import tensorflow as tf
 import traceback
+import json
 
 
 class NetworkBuilder:
@@ -40,6 +41,11 @@ class NetworkBuilder:
         :return: the sorted list of layers based on the params_dict
         """
         return [self.build_layer(layer_dict) for layer_dict in params_dict.values()]
+
+    def build_network_from_file(self, filepath):
+        with open(filepath) as f:
+            data = f.read()
+        return self.build_network(json.loads(data))
 
     def build_layer(self, layer_dict):
         """

@@ -80,7 +80,10 @@ class DDDQNAgent(Agent):
             actions = [np.random.choice(self.action_space_shape[i]) for i in range(self.action_number)]
         else:
             state = tf.expand_dims(tf.convert_to_tensor(observation, dtype=tf.float32), axis=0)
-            actions = [np.argmax(tensor, axis=-1) for tensor in self.q_net.advantage(state)]
+            if self.dueling_q:
+                actions = [np.argmax(tensor, axis=-1) for tensor in self.q_net.advantage(state)]
+            else:
+                actions = [np.argmax(tensor, axis=-1) for tensor in self.q_net(state)]
 
         self.time_step += 1
         return actions

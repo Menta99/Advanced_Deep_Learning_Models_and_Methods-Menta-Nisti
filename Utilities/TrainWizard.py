@@ -1,5 +1,5 @@
 import numpy as np
-import copy
+from Wrappers import make_atari_test, wrap_deepmind
 from PIL import Image
 
 
@@ -51,7 +51,9 @@ class TrainWizard:
                 break
 
     def play_full_game(self, file_name):
-        test_env = copy.deepcopy(self.environment)
+        test_env = make_atari_test(self.environment.spec.id)
+        test_env = wrap_deepmind(test_env, frame_stack=True, scale=True)
+        test_env.seed(np.random.randint(0, 10000))
         temp_time_step = self.agent.time_step
         temp_min_epsilon = self.agent.min_epsilon
         self.agent.time_step = self.agent.num_episodes

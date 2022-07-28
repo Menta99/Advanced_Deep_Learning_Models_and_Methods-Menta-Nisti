@@ -14,7 +14,7 @@ SYMBOLS_DICT = {0: '_', 1: 'X', -1: 'O'}
 class ConnectFourEnv(gym.Env):
     def __init__(self):
         self.action_space = spaces.Discrete(ACTION_SPACE)
-        self.observation_space = spaces.Discrete(ROWS * COLUMNS)
+        self.observation_space = spaces.Box(low=-1, high=1, shape=(COLUMNS, ROWS, 1), dtype=np.int32)
         self.start_mark = 'X'
         self.state = [[0 for i in range(ROWS)] for j in range(COLUMNS)]
         self.done = False

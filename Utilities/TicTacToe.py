@@ -167,13 +167,13 @@ class TicTacToeEnv(gym.Env):
             return None
         else:
             if state == ACTION_SPACE * [0]:
-                return random.choice([i for i in range(ACTION_SPACE)])
+                return np.random.choice([i for i in range(ACTION_SPACE)])
             if self._get_mark() == 1:
                 value, moves = self.max_value_ran(state, True)
-                return random.choice(moves)
+                return np.random.choice(moves)
             else:
                 value, moves = self.min_value_ran(state, True)
-                return random.choice(moves)
+                return np.random.choice(moves)
 
     def max_value_ran(self, state, save_actions=False):
         if self.goal(state)[1]:

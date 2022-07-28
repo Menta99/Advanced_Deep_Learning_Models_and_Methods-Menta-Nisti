@@ -24,7 +24,7 @@ class ConnectFourEnv(gym.Env):
         return self.to_image(self.state)
 
     def to_image(self, state):
-        return np.array([state[i] for i in range(COLUMNS)])
+        return np.expand_dims(np.array([state[i] for i in range(COLUMNS)]), axis=-1)
 
     def reset(self):
         self.start_mark = 'X'

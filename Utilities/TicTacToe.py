@@ -158,3 +158,58 @@ class TicTacToeEnv(gym.Env):
             if beta <= alpha:
                 break
         return v, move
+
+    # MiMax that returns a random non-suboptimal move
+    def minimaxran(self, state):
+        alpha = float('-inf')
+        beta = float('inf')
+        if self.goal(state)[1]:
+            return None
+        else:
+            if state == ACTION_SPACE * [0]:
+                return random.choice([i for i in range(ACTION_SPACE)])
+            if self._get_mark() == 1:
+                value, moves = self.max_value_ran(state, True)
+                return random.choice(moves)
+            else:
+                value, moves = self.min_value_ran(state, True)
+                return random.choice(moves)
+
+    def max_value_ran(self, state, save_actions=False):
+        if self.goal(state)[1]:
+            return self.goal(state)[0], []
+        v = float('-inf')
+        move = None
+        moves = []
+        for action in self.actions(state):
+            state[action] = self._get_mark()
+            # v = max(v, min_v(next_state))
+            aux, act = self.min_value_ran(state)
+            if aux > v:
+                v = aux
+                move = action
+                moves = []
+            state[action] = 0  # Undo move
+            if save_actions and aux == v:
+                moves.append(action)
+        return v, moves
+
+    def min_value_ran(self, state, save_actions=False):
+        if self.goal(state)[1]:
+            return self.goal(state)[0], []
+
+        v = float('inf')
+        move = None
+        moves = []
+        for action in self.actions(state):
+            state[action] = self._get_mark()
+            # v = max(v, min_v(next_state))
+            aux, act = self.max_value_ran(state)
+            if aux < v:
+                v = aux
+                move = action
+                moves = []
+            state[action] = 0  # Undo move
+            if save_actions and aux == v:
+                moves.append(action)
+        return v, moves

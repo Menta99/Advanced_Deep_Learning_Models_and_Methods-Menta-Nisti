@@ -169,14 +169,14 @@ class TicTacToeEnv(gym.Env):
             return None
         else:
             if self.turn == 0:
-                return random.choice([i for i in range(ACTION_SPACE)])
+                return np.random.choice([i for i in range(ACTION_SPACE)])
             if self.turn == 1:
                 if state[4] != 0:
-                    return random.choice([0, 2, 6, 8])
+                    return np.random.choice([0, 2, 6, 8])
                 elif state[0] != 0 or state[2] != 0 or state[4] != 0 or state[6] != 0:
                     return 4
                 else:
-                    return random.choice(self.actions(state))
+                    return np.random.choice(self.actions(state))
             if self._get_mark() == 1:
                 value, moves = self.max_value_ran(state, True)
                 return np.random.choice(moves)

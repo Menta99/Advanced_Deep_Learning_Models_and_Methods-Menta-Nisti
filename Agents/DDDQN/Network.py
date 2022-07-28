@@ -15,13 +15,15 @@ class DuelingNetwork(tf.keras.Model):
 
     def call(self, state):
         state = reduce(lambda input_data, l: l(input_data), self.layer_list_base, state)
-        a = reduce(lambda input_data, l: l(input_data), self.layer_list_advantage, state)
-        v = reduce(lambda input_data, l: l(input_data), self.layer_list_value, state)
+        value_stream, advantage_stream = tf.split(state, 2, 3)
+        v = reduce(lambda input_data, l: l(input_data), self.layer_list_value, value_stream)
+        a = reduce(lambda input_data, l: l(input_data), self.layer_list_advantage, advantage_stream)
         return v + (a - tf.math.reduce_mean(a, axis=1, keepdims=True))
 
     def advantage(self, state):
         state = reduce(lambda input_data, l: l(input_data), self.layer_list_base, state)
-        return reduce(lambda input_data, l: l(input_data), self.layer_list_advantage, state)
+        value_stream, advantage_stream = tf.split(state, 2, 3)
+        return reduce(lambda input_data, l: l(input_data), self.layer_list_advantage, advantage_stream)
 
 
 class DQNetwork(tf.keras.Model):

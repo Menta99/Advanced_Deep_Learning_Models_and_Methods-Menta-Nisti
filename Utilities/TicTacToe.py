@@ -16,6 +16,7 @@ class TicTacToeEnv(gym.Env):
         self.observation_space = spaces.Box(low=-1, high=1, shape=(3, 3, 1), dtype=np.int32)
         self.start_mark = 'X'
         self.state = ACTION_SPACE * [0]
+        self.turn = 0
         self.reset()
 
     def _get_observation(self):
@@ -38,6 +39,7 @@ class TicTacToeEnv(gym.Env):
             return self._get_observation(), -2 * self._get_mark(), True, 'invalid_action_error'  # Invalid Action Reward = -1 for X, 1 for O
         else:
             self.state[action] = self._get_mark()
+        self.turn+=1
         a, b, c = self.goal(self.state)
         return self._get_observation(), a, b, c
 
@@ -166,8 +168,15 @@ class TicTacToeEnv(gym.Env):
         if self.goal(state)[1]:
             return None
         else:
-            if state == ACTION_SPACE * [0]:
-                return np.random.choice([i for i in range(ACTION_SPACE)])
+            if self.turn == 0:
+                return random.choice([i for i in range(ACTION_SPACE)])
+            if self.turn == 1:
+                if state[4] != 0:
+                    return random.choice([0, 2, 6, 8])
+                elif state[0] != 0 or state[2] != 0 or state[4] != 0 or state[6] != 0:
+                    return 4
+                else:
+                    return random.choice(self.actions(state))
             if self._get_mark() == 1:
                 value, moves = self.max_value_ran(state, True)
                 return np.random.choice(moves)

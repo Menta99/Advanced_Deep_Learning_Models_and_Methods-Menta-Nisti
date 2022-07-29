@@ -191,7 +191,7 @@ class TurnGameTrainWizard:
             test_env = SantoriniEnv(self.environment.representation, agent_first)
         else:
             raise ValueError('Game provided does not exist!')
-        test_env = OpponentWrapper(test_env, agent_first, self.opponent)
+        test_env = OpponentWrapper(test_env, self.opponent)
         temp_time_step = self.agent.time_step
         temp_min_epsilon = self.agent.min_epsilon
         self.agent.time_step = self.agent.num_episodes

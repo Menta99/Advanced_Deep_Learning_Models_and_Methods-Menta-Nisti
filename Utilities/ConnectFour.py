@@ -26,13 +26,17 @@ class ConnectFourEnv(gym.Env):
         self.reset()
 
     def _get_observation(self):
-        obs = self.to_image(self.state)
-        if not self.agent_first:
-            obs = -obs
+        obs = self.get_fixed_obs()
         if self.representation == 'Tabular':
             return obs
         else:
             return np.asarray(self.render_board(obs))
+
+    def get_fixed_obs(self):
+        obs = self.to_image(self.state)
+        if not self.agent_first:
+            obs = -obs
+        return obs
 
     def to_image(self, state):
         return np.expand_dims(np.array([state[i] for i in range(COLUMNS)]), axis=-1)

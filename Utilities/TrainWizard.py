@@ -121,7 +121,7 @@ class TurnGameTrainWizard:
 
     def update_agent(self, state_init):
         action = self.agent.act(state_init)
-        state_next, reward, done, info, state_next_adv, reward_adv, done_adv, info_adv = self.environment.step(
+        state_next, reward, done, info, render, state_next_adv, reward_adv, done_adv, info_adv = self.environment.step(
             action[0])
 
         if done:
@@ -140,12 +140,12 @@ class TurnGameTrainWizard:
 
     def test_agent(self):
         print('Running average is {}'.format(np.mean(self.episode_reward_history)))
-        self.index += 1
         f = open(self.path + 'scores.pkl', 'wb')
         self.eval_reward_history[self.frame_count] = [self.play_test_games('full_game_{}'.format(self.index))]
         pickle.dump(self.eval_reward_history, f)
         f.close()
         self.agent.save()
+        self.index += 1
 
     def update_stats(self):
         print(self.frame_count, self.episode_reward, self.agent._epsilon_scheduler())
@@ -206,14 +206,16 @@ class TurnGameTrainWizard:
         done = False
         done_adv = False
         while not done and not done_adv:
-            game_frame.append(np.squeeze(state_init, axis=-1))
+            #game_frame.append(np.squeeze(state_init, axis=-1))
+            game_frame.append(test_env.render_board(test_env.get_fixed_obs()))
             action = self.agent.act(state_init)
-            state_next, reward, done, info, state_next_adv, reward_adv, done_adv, info_adv = test_env.step(action[0])
-            game_frame.append(np.squeeze(state_next, axis=-1))
+            state_next, reward, done, info, render, state_next_adv, reward_adv, done_adv, info_adv = test_env.step(action[0])
+            game_frame.append(render)
             if done:
                 score += reward
             elif done_adv:
-                game_frame.append(np.squeeze(state_next_adv, axis=-1))
+                #game_frame.append(np.squeeze(state_next_adv, axis=-1))
+                game_frame.append(test_env.render_board(test_env.get_fixed_obs()))
                 score += reward_adv
             else:
                 state_init = state_next_adv
@@ -226,5 +228,5 @@ class TurnGameTrainWizard:
     def save_game_gif(self, frames, file_name, score):
         print('Game len: ', len(frames), ' frames')
         print('Game score: ', score)
-        frames = [Image.fromarray(i) for i in frames]
-        frames[0].save(self.path + file_name + '.gif', save_all=True, append_images=frames[1:], duration=500)
+        #frames = [Image.fromarray(i) for i in frames]
+        frames[0].save(self.path + 'GIFs\\' + file_name + '.gif', save_all=True, append_images=frames[1:], duration=500)

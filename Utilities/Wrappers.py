@@ -15,11 +15,11 @@ class OpponentWrapper(gym.Wrapper):
 
     def step(self, action):
         obs, reward, done, info = self.env.step(action)
+        render = self.env.render_board(self.env.get_fixed_obs())
         if done:
-            return obs, reward, done, info, None, None, None, None
-
+            return obs, reward, done, info, render, None, None, None, None
         obs_adv, reward_adv, done_adv, info_adv = self.env.step(self.get_opponent_action(obs))
-        return obs, reward, done, info, obs_adv, reward_adv, done_adv, info_adv
+        return obs, reward, done, info, render, obs_adv, reward_adv, done_adv, info_adv
 
     def get_opponent_action(self, obs):
         if self.agent_type == 'Random':

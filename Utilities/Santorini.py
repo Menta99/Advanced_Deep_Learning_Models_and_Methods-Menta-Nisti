@@ -62,13 +62,17 @@ class SantoriniEnv(gym.Env):
         return self._get_observation()
 
     def _get_observation(self):
-        obs = np.expand_dims(self.state, axis=-1)
-        if not self.agent_first:
-            obs = np.concatenate([obs[:, :, 1:2, :], obs[:, :, 0:1, :], obs[:, :, 2:, :]], axis=-2)
+        obs = self.get_fixed_obs()
         if self.representation == 'Tabular':
             return obs
         else:
             return np.asarray(self.render_board(obs))
+
+    def get_fixed_obs(self):
+        obs = np.expand_dims(self.state, axis=-1)
+        if not self.agent_first:
+            obs = np.concatenate([obs[:, :, 1:2, :], obs[:, :, 0:1, :], obs[:, :, 2:, :]], axis=-2)
+        return obs
 
     def _assign_worker(self, player_num):
         coord = [np.random.choice(range(BOARD_SIZE)), np.random.choice(range(BOARD_SIZE))]

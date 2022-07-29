@@ -1,4 +1,5 @@
 import gym
+from PIL import Image, ImageDraw
 from gym import spaces
 import numpy as np
 

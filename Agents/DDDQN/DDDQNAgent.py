@@ -120,17 +120,19 @@ class DDDQNAgent(Agent):
         network.optimizer.apply_gradients(zip(network_gradient, network.trainable_variables))
 
     def save(self):
-        print('Saing models and parameters...')
-        pickle.dump([self.memory, self.learn_step_counter, self.time_step],
-                    open(os.path.join(self.checkpoint_dir, '_params'), "wb"))
+        print('Saving models and parameters...')
+        f = open(os.path.join(self.checkpoint_dir, '_params'), "wb")
+        pickle.dump([self.memory, self.learn_step_counter, self.time_step], f)
+        f.close()
         self.q_net.save_weights(self.q_net.checkpoint_file)
         if self.double_q:
             self.q_target_net.save_weights(self.q_target_net.checkpoint_file)
 
     def load(self):
         print('Loading models and parameters...')
-        self.memory, self.learn_step_counter, self.time_step = pickle.load(
-            open(os.path.join(self.checkpoint_dir, '_params'), "rb"))
+        f = open(os.path.join(self.checkpoint_dir, '_params'), "rb")
+        self.memory, self.learn_step_counter, self.time_step = pickle.load(f)
+        f.close()
         self.q_net.load_weights(self.q_net.checkpoint_file)
         if self.double_q:
             self.q_target_net.load_weights(self.q_target_net.checkpoint_file)

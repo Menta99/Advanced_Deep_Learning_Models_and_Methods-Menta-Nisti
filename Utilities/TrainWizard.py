@@ -6,6 +6,7 @@ from Utilities.ConnectFour import ConnectFourEnv
 from Utilities.Santorini import SantoriniEnv
 from Utilities.TicTacToe import TicTacToeEnv
 from Wrappers import make_atari_test, wrap_deepmind, OpponentWrapper
+from tqdm import tqdm
 from PIL import Image
 
 

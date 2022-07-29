@@ -12,6 +12,7 @@ SYMBOLS_DICT = {0: '_', 1: 'X', -1: 'O'}
 
 class TicTacToeEnv(gym.Env):
     def __init__(self):
+        self.name = "TicTacToe"
         self.action_space = spaces.Discrete(ACTION_SPACE)
         self.observation_space = spaces.Box(low=-1, high=1, shape=(3, 3, 1), dtype=np.int32)
         self.start_mark = 'X'
@@ -228,3 +229,17 @@ class TicTacToeEnv(gym.Env):
             if save_actions and aux == v:
                 moves.append(action)
         return v, moves
+
+    def render_board(self):
+        state = self.to_image(self.state)
+        w, h = 96, 96
+        image = Image.new('L', (w, h), color=128)
+        draw = ImageDraw.Draw(image)
+        for i in range(BOARD_SIZE):
+            for j in range(BOARD_SIZE):
+                if state[j][i] != 0:
+                    if state[j][i] == 1:
+                        image.paste(Image.new('L', (32, 32), color=255), (32 * i, 32 * j))
+                    else:
+                        image.paste(Image.new('L', (32, 32), color=0), (32 * i, 32 * j))
+        return image

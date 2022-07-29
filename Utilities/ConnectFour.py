@@ -1,6 +1,8 @@
 import gym
 from gym import spaces
 import numpy as np
+from PIL import Image, ImageDraw
+
 
 ROWS = 6
 COLUMNS = 7
@@ -13,6 +15,7 @@ SYMBOLS_DICT = {0: '_', 1: 'X', -1: 'O'}
 
 class ConnectFourEnv(gym.Env):
     def __init__(self):
+        self.name = "ConnectFour"
         self.action_space = spaces.Discrete(ACTION_SPACE)
         self.observation_space = spaces.Box(low=-1, high=1, shape=(COLUMNS, ROWS, 1), dtype=np.int32)
         self.start_mark = 'X'
@@ -189,6 +192,20 @@ class ConnectFourEnv(gym.Env):
             if beta <= alpha:
                 break
         return v, move
+
+    def render_board(self):
+      state = self.state
+      w,h = 224, 192
+      image = Image.new('L', (w,h), color=128)
+      draw = ImageDraw.Draw(image)
+      for i in range(COLUMNS):
+        for j in range(ROWS):
+          if state[i][j]!=0:
+            if state[i][j] == 1:
+              image.paste(Image.new('L', (32,32), color = 255), (32*i, -32*j + 192 - 32))
+            else:
+              image.paste(Image.new('L', (32,32), color = 0), (32*i, -32*j + 192 - 32))
+      return image
 
 
 def len_occupied(vector):

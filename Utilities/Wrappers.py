@@ -5,6 +5,57 @@ from collections import deque
 import cv2
 
 
+class OpponentWrapper(gym.Wrapper):
+    def __init__(self, env, agent_first, agent_type):
+        """Create an environment that implicitly uses a simulated adversary
+        """
+        gym.Wrapper.__init__(self, env)
+        self.agent_first = agent_first
+        self.agent_type = agent_type
+        assert agent_type in ['Random', 'MinMax', 'MinMaxRandom', 'MonteCarlo', 'Network'], 'Select a valid opponent'
+
+    def step(self, action):
+        obs, reward, done, info = self.env.step(action)
+        if done:
+            return obs, reward, done, info, None, None, None, None
+
+        obs_adv, reward_adv, done_adv, info_adv = self.env.step(self.get_opponent_action(obs))
+        return obs, reward, done, info, obs_adv, reward_adv, done_adv, info_adv
+
+    def get_opponent_action(self, obs):
+        if self.agent_type == 'Random':
+            valid_actions = self.get_valid_actions(obs)
+            return valid_actions[np.random.randint(0, len(valid_actions))]
+        elif self.agent_type == 'MinMax':
+            return self.env.minmax(self.env.state)
+        elif self.agent_type == 'MinMaxRandom':
+            return self.env.minmaxran(self.env.state)
+        elif self.agent_type == 'MonteCarlo':
+            # call to MonteCarlo method of the environent
+            return None
+        elif self.agent_type == 'Network':
+            # call to Network layers method of the to provide the best action given the obs
+            return None
+        else:
+            raise ValueError('Opponent provided does not exist!')
+
+    def get_valid_actions(self, obs):
+        if self.env.name == 'TicTacToe':
+            return [x[0] * obs.shape[0] + x[1] for x in np.argwhere(obs == 0)]
+        elif self.env.name == 'Connect4':
+            return [i for i in range(obs.shape[0]) if obs[i, obs.shape[1] - 1] == 0]
+        elif self.env.name == 'Santorini':
+            return [0]
+        else:
+            raise ValueError('Game provided does not exist!')
+
+    def reset(self, **kwargs):
+        obs = self.env.reset(**kwargs)
+        if not self.agent_first:
+            obs, _, _, _ = self.env.step(self.get_opponent_action(obs))
+        return obs
+
+
 class NoopResetEnv(gym.Wrapper):
     def __init__(self, env, noop_max=30):
         """Sample initial states by taking random number of no-ops on reset.
@@ -22,7 +73,7 @@ class NoopResetEnv(gym.Wrapper):
         if self.override_num_noops is not None:
             noops = self.override_num_noops
         else:
-            noops = np.random.randint(1, self.noop_max + 1) #pylint: disable=E1101
+            noops = np.random.randint(1, self.noop_max + 1)  # pylint: disable=E1101
         assert noops > 0
         obs = None
         for _ in range(noops):
@@ -33,6 +84,7 @@ class NoopResetEnv(gym.Wrapper):
 
     def step(self, ac):
         return self.env.step(ac)
+
 
 class FireResetEnv(gym.Wrapper):
     def __init__(self, env):
@@ -54,6 +106,7 @@ class FireResetEnv(gym.Wrapper):
     def step(self, ac):
         return self.env.step(ac)
 
+
 class EpisodicLifeEnv(gym.Wrapper):
     def __init__(self, env):
         """Make end-of-life == end-of-episode, but only reset on true game over.
@@ -61,7 +114,7 @@ class EpisodicLifeEnv(gym.Wrapper):
         """
         gym.Wrapper.__init__(self, env)
         self.lives = 0
-        self.was_real_done  = True
+        self.was_real_done = True
 
     def step(self, action):
         obs, reward, done, info = self.env.step(action)
@@ -90,13 +143,14 @@ class EpisodicLifeEnv(gym.Wrapper):
         self.lives = self.env.unwrapped.ale.lives()
         return obs
 
+
 class MaxAndSkipEnv(gym.Wrapper):
     def __init__(self, env, skip=4):
         """Return only every `skip`-th frame"""
         gym.Wrapper.__init__(self, env)
         # most recent raw observations (for max pooling across time steps)
-        self._obs_buffer = np.zeros((2,)+env.observation_space.shape, dtype=np.uint8)
-        self._skip       = skip
+        self._obs_buffer = np.zeros((2,) + env.observation_space.shape, dtype=np.uint8)
+        self._skip = skip
 
     def step(self, action):
         """Repeat action, sum reward, and max over last observations."""
@@ -117,6 +171,7 @@ class MaxAndSkipEnv(gym.Wrapper):
 
     def reset(self, **kwargs):
         return self.env.reset(**kwargs)
+
 
 class ClipRewardEnv(gym.RewardWrapper):
     def __init__(self, env):
@@ -192,7 +247,8 @@ class FrameStack(gym.Wrapper):
         self.k = k
         self.frames = deque([], maxlen=k)
         shp = env.observation_space.shape
-        self.observation_space = spaces.Box(low=0, high=255, shape=(shp[:-1] + (shp[-1] * k,)), dtype=env.observation_space.dtype)
+        self.observation_space = spaces.Box(low=0, high=255, shape=(shp[:-1] + (shp[-1] * k,)),
+                                            dtype=env.observation_space.dtype)
 
     def reset(self):
         ob = self.env.reset()
@@ -209,6 +265,7 @@ class FrameStack(gym.Wrapper):
         assert len(self.frames) == self.k
         return LazyFrames(list(self.frames))
 
+
 class ScaledFloatFrame(gym.ObservationWrapper):
     def __init__(self, env):
         gym.ObservationWrapper.__init__(self, env)
@@ -218,6 +275,7 @@ class ScaledFloatFrame(gym.ObservationWrapper):
         # careful! This undoes the memory optimization, use
         # with smaller replay buffers only.
         return np.array(observation).astype(np.float32) / 255.0
+
 
 class LazyFrames(object):
     def __init__(self, frames):
@@ -254,6 +312,7 @@ class LazyFrames(object):
     def frame(self, i):
         return self._force()[..., i]
 
+
 def make_atari(env_id, max_episode_steps=None):
     env = gym.make(env_id)
     assert 'NoFrameskip' in env.spec.id
@@ -261,11 +320,13 @@ def make_atari(env_id, max_episode_steps=None):
     env = MaxAndSkipEnv(env, skip=4)
     return env
 
+
 def make_atari_test(env_id, max_episode_steps=None):
     env = gym.make(env_id)
     assert 'NoFrameskip' in env.spec.id
     env = MaxAndSkipEnv(env, skip=4)
     return env
+
 
 def wrap_deepmind(env, episode_life=True, clip_rewards=True, frame_stack=False, scale=False):
     """Configure environment for DeepMind-style Atari.

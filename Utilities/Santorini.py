@@ -1,11 +1,9 @@
 import gym
 from gym import spaces
 import numpy as np
-import random
 from PIL import Image, ImageDraw
 
 BOARD_SIZE = 5
-LAYERS = 6
 expanded_action = False  # action_type == False -> ACTION SPACE 2,8,8
 # action_type == True -> ACTION SPACE 2,3,3,3,3
 
@@ -34,13 +32,19 @@ ACTIONS = {
 
 
 class SantoriniEnv(gym.Env):
-    def __init__(self):
+    def __init__(self, representation, agent_first):
         self.name = "Santorini"
         self.action_space = spaces.MultiDiscrete(ACTION_SPACE[expanded_action])
         self.observation_space = spaces.Box(low=0, high=1, shape=(BOARD_SIZE, BOARD_SIZE, len(LAYERS), 1),
                                             dtype=np.int32)
         self.player_one = True
         self.state = np.zeros((BOARD_SIZE, BOARD_SIZE, len(LAYERS)))
+        self.player_two_workers = None
+        self.player_one_workers = None
+        self.representation = representation
+        self.agent_first = agent_first
+        assert self.representation in ['Tabular', 'Graphic']
+        self.done = False
         self.reset()
 
     def reset(self):
@@ -58,10 +62,16 @@ class SantoriniEnv(gym.Env):
         return self._get_observation()
 
     def _get_observation(self):
-        return np.expand_dims(self.state, axis=-1)
+        obs = np.expand_dims(self.state, axis=-1)
+        if not self.agent_first:
+            obs = np.concatenate([obs[:, :, 1:2, :], obs[:, :, 0:1, :], obs[:, :, 2:, :]], axis=-2)
+        if self.representation == 'Tabular':
+            return obs
+        else:
+            return np.asarray(self.render_board(obs))
 
     def _assign_worker(self, player_num):
-        coord = [random.choice(range(BOARD_SIZE)), random.choice(range(BOARD_SIZE))]
+        coord = [np.random.choice(range(BOARD_SIZE)), np.random.choice(range(BOARD_SIZE))]
         if self.state[coord[0]][coord[1]][LAYERS['player1'] + player_num] == 0:
             self.state[coord[0]][coord[1]][LAYERS['player1'] + player_num] = 1
             return coord
@@ -76,16 +86,20 @@ class SantoriniEnv(gym.Env):
 
         player_num = 0 if self.player_one else 1
 
-        if action == None:
+        if action is None:
             reward = TWO_REWARD if player_num == 0 else ONE_REWARD
             info = "player 1 has no more moves, player 2 wins" if player_num == 0 else "player 2 has no more moves, player 1 wins"
             done = True
+            if not self.agent_first:
+                reward = -reward
             return self._get_observation(), reward, done, info
 
         if not self.check_valid_action(action):
             reward = -2 * ONE_REWARD if player_num == 0 else -2 * TWO_REWARD
             info = "Illegal action by player 1" if player_num == 0 else "Illegal action by player 2"
             done = True
+            if not self.agent_first:
+                reward = -reward
             return self._get_observation(), reward, done, info
 
         coord_worker = self.player_one_workers[action[0]] if self.player_one else self.player_two_workers[action[0]]
@@ -105,7 +119,8 @@ class SantoriniEnv(gym.Env):
         self.player_one = not self.player_one
 
         reward, done, info = self.goal()
-
+        if not self.agent_first:
+            reward = -reward
         return self._get_observation(), reward, done, info
 
     def _build(self, build_row, build_column):
@@ -122,8 +137,6 @@ class SantoriniEnv(gym.Env):
 
         if action[1] == action[2] == 0 or action[3] == action[4] == 0:
             return False  # invalid action no movement/build on spot
-
-        player_num = 0 if self.player_one else 1
 
         coord_worker = self.player_one_workers[action[0]] if self.player_one else self.player_two_workers[action[0]]
         coord_landing = [coord_worker[0] + action[1], coord_worker[1] + action[2]]
@@ -150,7 +163,6 @@ class SantoriniEnv(gym.Env):
     # Returns all possible actions given the state in the expanded form
     def actions(self):
         actions = []
-        player_num = 0 if self.player_one else 1
         for i in [0, 1]:
             for j in [-1, 0, 1]:
                 for k in [-1, 0, 1]:
@@ -172,8 +184,7 @@ class SantoriniEnv(gym.Env):
                         return TWO_REWARD, True, "player two wins"
         return 0, False, "game not end"
 
-    def render_board(self):
-        state = self.state
+    def render_board(self, state):
         w, h = 160, 160
         image = Image.new('L', (w, h))
         draw = ImageDraw.Draw(image)

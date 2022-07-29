@@ -12,17 +12,27 @@ SYMBOLS_DICT = {0: '_', 1: 'X', -1: 'O'}
 
 
 class TicTacToeEnv(gym.Env):
-    def __init__(self):
+    def __init__(self, representation, agent_first):
         self.name = "TicTacToe"
         self.action_space = spaces.Discrete(ACTION_SPACE)
         self.observation_space = spaces.Box(low=-1, high=1, shape=(3, 3, 1), dtype=np.int32)
         self.start_mark = 'X'
         self.state = ACTION_SPACE * [0]
         self.turn = 0
+        self.representation = representation
+        self.agent_first = agent_first
+        assert self.representation in ['Tabular', 'Graphic']
+        self.done = False
         self.reset()
 
     def _get_observation(self):
-        return self.to_image(self.state)
+        obs = self.to_image(self.state)
+        if not self.agent_first:
+            obs = -obs
+        if self.representation == 'Tabular':
+            return obs
+        else:
+            return np.asarray(self.render_board(obs))
 
     def to_image(self, state):
         return np.expand_dims(np.array([state[:3], state[3:6], state[6:9]]), axis=-1)
@@ -35,14 +45,19 @@ class TicTacToeEnv(gym.Env):
 
     def step(self, action):
         invalidAction = False
-        if (self.state[action] != 0):
+        if self.state[action] != 0:
             invalidAction = True
         if invalidAction:
-            return self._get_observation(), -2 * self._get_mark(), True, 'invalid_action_error'  # Invalid Action Reward = -1 for X, 1 for O
+            reward = -2 * self._get_mark()
+            if not self.agent_first:
+                reward = -reward
+            return self._get_observation(), reward, True, 'invalid_action_error'
         else:
             self.state[action] = self._get_mark()
-        self.turn+=1
+        self.turn += 1
         a, b, c = self.goal(self.state)
+        if not self.agent_first:
+            a = -a
         return self._get_observation(), a, b, c
 
     # Returns all possible actions given the state
@@ -113,7 +128,7 @@ class TicTacToeEnv(gym.Env):
         return False
 
     # Alpha Beta Pruning AI to select the best move
-    def minimax(self, state):
+    def minmax(self, state):
         alpha = float('-inf')
         beta = float('inf')
         if self.goal(state)[1]:
@@ -164,7 +179,7 @@ class TicTacToeEnv(gym.Env):
         return v, move
 
     # MiMax that returns a random non-suboptimal move
-    def minimaxran(self, state):
+    def minmaxran(self, state):
         alpha = float('-inf')
         beta = float('inf')
         if self.goal(state)[1]:
@@ -231,8 +246,7 @@ class TicTacToeEnv(gym.Env):
                 moves.append(action)
         return v, moves
 
-    def render_board(self):
-        state = self.to_image(self.state)
+    def render_board(self, state):
         w, h = 96, 96
         image = Image.new('L', (w, h), color=128)
         draw = ImageDraw.Draw(image)

@@ -3,7 +3,6 @@ from gym import spaces
 import numpy as np
 from PIL import Image, ImageDraw
 
-
 ROWS = 6
 COLUMNS = 7
 ACTION_SPACE = COLUMNS
@@ -14,17 +13,26 @@ SYMBOLS_DICT = {0: '_', 1: 'X', -1: 'O'}
 
 
 class ConnectFourEnv(gym.Env):
-    def __init__(self):
+    def __init__(self, representation, agent_first):
         self.name = "ConnectFour"
         self.action_space = spaces.Discrete(ACTION_SPACE)
         self.observation_space = spaces.Box(low=-1, high=1, shape=(COLUMNS, ROWS, 1), dtype=np.int32)
         self.start_mark = 'X'
-        self.state = [[0 for i in range(ROWS)] for j in range(COLUMNS)]
+        self.state = [[0 for _ in range(ROWS)] for _ in range(COLUMNS)]
+        self.representation = representation
+        self.agent_first = agent_first
+        assert self.representation in ['Tabular', 'Graphic']
         self.done = False
         self.reset()
 
     def _get_observation(self):
-        return self.to_image(self.state)
+        obs = self.to_image(self.state)
+        if not self.agent_first:
+            obs = -obs
+        if self.representation == 'Tabular':
+            return obs
+        else:
+            return np.asarray(self.render_board(obs))
 
     def to_image(self, state):
         return np.expand_dims(np.array([state[i] for i in range(COLUMNS)]), axis=-1)
@@ -38,13 +46,18 @@ class ConnectFourEnv(gym.Env):
     # OpenAI Gym Environments standard function which returns next state given the action to perform, as well as the state of the game (Terminal/non Terminal), action reward and additional informations
     def step(self, action):
         invalidAction = False
-        if (not self.check_valid_action(action)):
+        if not self.check_valid_action(action):
             invalidAction = True
         if invalidAction:
-            return self._get_observation(), -2 * self._get_mark(), True, 'invalid_action_error'  # Invalid Action Reward = -1 for X, 1 for O
+            reward = -2 * self._get_mark()
+            if not self.agent_first:
+                reward = -reward
+            return self._get_observation(), reward, True, 'invalid_action_error'
         else:
             self.result(self.state, action)
         reward, done, info = self.goal(self.state)
+        if not self.agent_first:
+            reward = -reward
         return self._get_observation(), reward, done, info
 
     # Returns True if the action is valid, else False
@@ -55,7 +68,7 @@ class ConnectFourEnv(gym.Env):
     def actions(self, state):
         to_return = []
         for col in range(COLUMNS):
-            if (self.check_valid_action(col)):
+            if self.check_valid_action(col):
                 to_return.append(col)
         return to_return
 
@@ -91,7 +104,7 @@ class ConnectFourEnv(gym.Env):
         x_counter, o_counter = 0, 0
         for i in range(COLUMNS):
             for j in range(ROWS):
-                if (self.state[i][j] != 0):
+                if self.state[i][j] != 0:
                     if self.state[i][j] == 1:
                         x_counter += 1
                     else:
@@ -121,19 +134,19 @@ class ConnectFourEnv(gym.Env):
     def _check_diagonal(self, state):
         for i in range(COLUMNS):
             for j in range(ROWS):
-                if (i < 4 and i >= 0 and j < 3 and j >= 0):
+                if 4 > i >= 0 and 3 > j >= 0:
                     if (state[i][j] != 0 and state[i][j] == state[i + 1][j + 1] == state[i + 2][j + 2] == state[i + 3][
                         j + 3]):
                         return True
-                if i >= 3 and i < COLUMNS and j >= 3 and j < ROWS:
+                if 3 <= i < COLUMNS and 3 <= j < ROWS:
                     if state[i][j] != 0 and state[i][j] == state[i - 1][j - 1] == state[i - 2][j - 2] == state[i - 3][
                         j - 3]:
                         return True
-                if (i >= 3 and i < COLUMNS and j < 3 and j >= 0):
+                if COLUMNS > i >= 3 > j >= 0:
                     if (state[i][j] != 0 and state[i][j] == state[i - 1][j + 1] == state[i - 2][j + 2] == state[i - 3][
                         j + 3]):
                         return True
-                if (i < 4 and i >= 0 and j >= 3 and j < ROWS):
+                if 4 > i >= 0 and 3 <= j < ROWS:
                     if (state[i][j] != 0 and state[i][j] == state[i + 1][j - 1] == state[i + 2][j - 2] == state[i + 3][
                         j - 3]):
                         return True
@@ -142,7 +155,7 @@ class ConnectFourEnv(gym.Env):
     ###############################################
     # Alpha Beta Pruning AI to select the best move#
     ###############################################
-    def minimax(self, state, depth=6):
+    def minmax(self, state, depth=6):
         alpha = float('-inf')
         beta = float('inf')
         if self.goal(state)[1]:
@@ -193,19 +206,18 @@ class ConnectFourEnv(gym.Env):
                 break
         return v, move
 
-    def render_board(self):
-      state = self.state
-      w,h = 224, 192
-      image = Image.new('L', (w,h), color=128)
-      draw = ImageDraw.Draw(image)
-      for i in range(COLUMNS):
-        for j in range(ROWS):
-          if state[i][j]!=0:
-            if state[i][j] == 1:
-              image.paste(Image.new('L', (32,32), color = 255), (32*i, -32*j + 192 - 32))
-            else:
-              image.paste(Image.new('L', (32,32), color = 0), (32*i, -32*j + 192 - 32))
-      return image
+    def render_board(self, state):
+        w, h = 224, 192
+        image = Image.new('L', (w, h), color=128)
+        draw = ImageDraw.Draw(image)
+        for i in range(COLUMNS):
+            for j in range(ROWS):
+                if state[i][j] != 0:
+                    if state[i][j] == 1:
+                        image.paste(Image.new('L', (32, 32), color=255), (32 * i, -32 * j + 192 - 32))
+                    else:
+                        image.paste(Image.new('L', (32, 32), color=0), (32 * i, -32 * j + 192 - 32))
+        return image
 
 
 def len_occupied(vector):

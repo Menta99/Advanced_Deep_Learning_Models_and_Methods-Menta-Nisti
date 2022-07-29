@@ -6,11 +6,10 @@ import cv2
 
 
 class OpponentWrapper(gym.Wrapper):
-    def __init__(self, env, agent_first, agent_type):
+    def __init__(self, env, agent_type):
         """Create an environment that implicitly uses a simulated adversary
         """
         gym.Wrapper.__init__(self, env)
-        self.agent_first = agent_first
         self.agent_type = agent_type
         assert agent_type in ['Random', 'MinMax', 'MinMaxRandom', 'MonteCarlo', 'Network'], 'Select a valid opponent'
 
@@ -51,7 +50,7 @@ class OpponentWrapper(gym.Wrapper):
 
     def reset(self, **kwargs):
         obs = self.env.reset(**kwargs)
-        if not self.agent_first:
+        if not self.env.agent_first:
             obs, _, _, _ = self.env.step(self.get_opponent_action(obs))
         return obs
 

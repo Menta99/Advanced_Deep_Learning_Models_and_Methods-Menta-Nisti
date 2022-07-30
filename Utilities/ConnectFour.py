@@ -22,9 +22,9 @@ class ConnectFourEnv(gym.Env):
         assert self.representation in ['Tabular', 'Graphic'] and self.agent_first in [True, False, None]
         self.action_space = spaces.Discrete(ACTION_SPACE)
         if self.representation == 'Tabular':
-            self.observation_space = spaces.Box(low=-1, high=1, shape=(COLUMNS, ROWS, 1), dtype=np.int32)
+            self.observation_space = spaces.Box(low=-1, high=1, shape=(ROWS, COLUMNS, 1), dtype=np.int32)
         else:
-            self.observation_space = spaces.Box(low=0, high=255, shape=(WIDTH, HEIGHT, 1), dtype=np.int32)
+            self.observation_space = spaces.Box(low=0, high=255, shape=(HEIGHT, WIDTH, 1), dtype=np.int32)
         self.action_space = spaces.Discrete(ACTION_SPACE)
         self.state = np.zeros((COLUMNS, ROWS))
         self.representation = representation
@@ -237,11 +237,11 @@ class ConnectFourEnv(gym.Env):
 
     def render_board(self, state):
         image = Image.new('L', (WIDTH, HEIGHT), color=128)
-        for i in range(COLUMNS):
-            for j in range(ROWS):
+        for i in range(ROWS):
+            for j in range(COLUMNS):
                 if state[i][j] != 0:
                     if state[i][j] == 1:
-                        image.paste(Image.new('L', (32, 32), color=255), (32 * i, -32 * j + 192 - 32))
+                        image.paste(Image.new('L', (32, 32), color=255), (32 * j, 32 * i)) #+ HEIGHT + 32
                     else:
-                        image.paste(Image.new('L', (32, 32), color=0), (32 * i, -32 * j + 192 - 32))
+                        image.paste(Image.new('L', (32, 32), color=0), (32 * j, 32 * i)) #+ HEIGHT + 32
         return image

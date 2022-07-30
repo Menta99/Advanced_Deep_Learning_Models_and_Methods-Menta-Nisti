@@ -80,7 +80,7 @@ class TurnGameTrainWizard:
         self.eval_reward_history[self.frame_count] = [self.play_test_games('full_game_{}'.format(self.index))]
         pickle.dump(self.eval_reward_history, f)
         f.close()
-        self.agent.save()
+        #self.agent.save() # keep an eye on memory, CNN are huge
         self.index += 1
 
     def update_stats(self):

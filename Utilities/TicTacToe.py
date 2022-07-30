@@ -1,5 +1,5 @@
 import gym
-from PIL import Image, ImageDraw
+from PIL import Image
 from gym import spaces
 import numpy as np
 
@@ -9,19 +9,23 @@ X_REWARD = 1
 O_REWARD = -1
 TIE_REWARD = 0
 SYMBOLS_DICT = {0: '_', 1: 'X', -1: 'O'}
+WIDTH = 96
+HEIGHT = 96
 
 
 class TicTacToeEnv(gym.Env):
     def __init__(self, representation, agent_first):
         self.name = "TicTacToe"
-        self.action_space = spaces.Discrete(ACTION_SPACE)
-        self.observation_space = spaces.Box(low=-1, high=1, shape=(3, 3, 1), dtype=np.int32)
-        self.start_mark = 'X'
-        self.state = np.zeros((3,3)) #ACTION_SPACE * [0]
-        self.turn = 0
         self.representation = representation
         self.agent_first = agent_first
-        assert self.representation in ['Tabular', 'Graphic']
+        assert self.representation in ['Tabular', 'Graphic'] and self.agent_first in [True, False, None]
+        self.action_space = spaces.Discrete(ACTION_SPACE)
+        if self.representation == 'Tabular':
+            self.observation_space = spaces.Box(low=-1, high=1, shape=(3, 3, 1), dtype=np.int32)
+        else:
+            self.observation_space = spaces.Box(low=0, high=255, shape=(WIDTH, HEIGHT, 1), dtype=np.int32)
+        self.state = np.zeros((3, 3))  # ACTION_SPACE * [0]
+        self.turn = 0
         self.done = False
         self.reset()
 
@@ -33,23 +37,22 @@ class TicTacToeEnv(gym.Env):
             return np.asarray(self.render_board(obs))
 
     def get_fixed_obs(self):
-        obs = self.to_image(self.state)
+        obs = self.to_image()
         if not self.agent_first:
             obs = -obs
         return obs
 
-    def to_image(self, state):
+    def to_image(self):
         return np.expand_dims(self.state, axis=-1)
 
     def reset(self):
-        self.start_mark = 'X'
-        self.state = np.zeros((3,3))
+        self.state = np.zeros((3, 3))
         self.done = False
         return self._get_observation()
 
     def step(self, action):
         invalidAction = False
-        if self.state[action//3][action%3] != 0:
+        if self.state[action // 3][action % 3] != 0:
             invalidAction = True
         if invalidAction:
             reward = -2 * self._get_mark()
@@ -57,7 +60,7 @@ class TicTacToeEnv(gym.Env):
                 reward = -reward
             return self._get_observation(), reward, True, 'invalid_action_error'
         else:
-            self.state[action//3][action%3] = self._get_mark()
+            self.state[action // 3][action % 3] = self._get_mark()
         self.turn += 1
         a, b, c = self.goal(self.state)
         if not self.agent_first:
@@ -66,69 +69,36 @@ class TicTacToeEnv(gym.Env):
 
     # Returns all possible actions given the state
     def actions(self, state):
-        actions = []
-        for i in range(9):
-          if state[i//3][i%3] == 0:
-            actions.append(i)
-        return actions
+        return [i for i in range(9) if state[i // 3][i % 3] == 0]
 
     # Checks wheter a final state is reached
     def goal(self, state):
-        done = False
-        reward = 0
-        info = "Game not End"
-        win = self._check_diagonal(state) or self._check_horizontal(state) or self._check_vertical(state)
-        if win:
-            done = True
-            reward = X_REWARD if self._get_mark() == -1 else O_REWARD
-            info = "X won" if reward == X_REWARD else "O Won"
-        tie = len(self.actions(state)) == 0
-        if tie and not win:
-            done = True
-            reward = TIE_REWARD
-            info = "tie"
-        return reward, done, info
+        if len(self.actions(state)) == 0:
+            return TIE_REWARD, True, "Tie"
+        elif self._check_diagonal(state) or self._check_horizontal(state) or self._check_vertical(state):
+            if self._get_mark() == -1:
+                return X_REWARD, True, "X won"
+            else:
+                return O_REWARD, True, "O won"
+        else:
+            return 0, False, 'Game not End'
 
     # Returns Next state given current state and action
     def result(self, state, action):
-        state[action//3][action%3] = self._get_mark()
+        state[action // 3][action % 3] = self._get_mark()
         return state
 
     def _get_mark(self):
-        x_counter, o_counter = 0, 0
-        for i in range(BOARD_SIZE ** 2):
-            if (self.state[i//3][i%3] != 0):
-                if self.state[i//3][i%3] == 1:
-                    x_counter += 1
-                else:
-                    o_counter += 1
-
-        return 1 if x_counter == o_counter else -1
+        return 1 if np.count_nonzero(self.state == 1) == np.count_nonzero(self.state == -1) else -1
 
     def _check_horizontal(self, state):
-        for i in range(0, BOARD_SIZE * BOARD_SIZE, BOARD_SIZE):
-            cnt = 0
-            k = i
-            for j in range(1, BOARD_SIZE):
-                (cnt, k) = (cnt + 1, k) if (state[k//3][k%3] == state[(i + j)//3][(i+j)%3] and state[k//3][k%3] != 0) else (0, i + j)
-            if cnt == BOARD_SIZE - 1:
-                return True
-        return False
+        return BOARD_SIZE in abs(np.sum(state, axis=1))
 
     def _check_vertical(self, state):
-        for i in range(0, BOARD_SIZE):
-            cnt = 0
-            k = i
-            for j in range(BOARD_SIZE, BOARD_SIZE * BOARD_SIZE, BOARD_SIZE):
-                (cnt, k) = (cnt + 1, k) if (state[k//3][k%3] == state[(i + j)//3][(i+j)%3] and state[k//3][k%3] != 0) else (0, i + j)
-                if cnt == BOARD_SIZE - 1:
-                    return True
-        return False
+        return BOARD_SIZE in abs(np.sum(state, axis=0))
 
     def _check_diagonal(self, state):
-        if ((state[0][0] == state[1][1] == state[2][2] or state[2][0] == state[1][1] == state[0][2]) and state[1][1] != 0):
-            return True
-        return False
+        return state[1][1] != 0 and (state[0][0] == state[1][1] == state[2][2] or state[2][0] == state[1][1] == state[0][2])
 
     # Alpha Beta Pruning AI to select the best move
     def minmax(self, state):
@@ -150,13 +120,13 @@ class TicTacToeEnv(gym.Env):
         v = float('-inf')
         move = None
         for action in self.actions(state):
-            state[action//3][action%3] = self._get_mark()
+            state[action // 3][action % 3] = self._get_mark()
             # v = max(v, min_v(next_state))
             aux, act = self.min_value(state, alpha, beta)
             if aux > v:
                 v = aux
                 move = action
-            state[action//3][action%3] = 0  # Undo move
+            state[action // 3][action % 3] = 0  # Undo move
             alpha = max(alpha, aux)
             if beta <= alpha:
                 break
@@ -165,17 +135,16 @@ class TicTacToeEnv(gym.Env):
     def min_value(self, state, alpha, beta):
         if self.goal(state)[1]:
             return self.goal(state)[0], None
-
         v = float('inf')
         move = None
         for action in self.actions(state):
-            state[action//3][action%3] = self._get_mark()
+            state[action // 3][action % 3] = self._get_mark()
             # v = max(v, min_v(next_state))
             aux, act = self.max_value(state, alpha, beta)
             if aux < v:
                 v = aux
                 move = action
-            state[action//3][action%3] = 0  # Undo move
+            state[action // 3][action % 3] = 0  # Undo move
             beta = min(beta, aux)
             if beta <= alpha:
                 break
@@ -183,8 +152,6 @@ class TicTacToeEnv(gym.Env):
 
     # MiMax that returns a random non-suboptimal move
     def minmaxran(self, state):
-        alpha = float('-inf')
-        beta = float('inf')
         if self.goal(state)[1]:
             return None
         else:
@@ -214,17 +181,15 @@ class TicTacToeEnv(gym.Env):
         if self.goal(state)[1]:
             return self.goal(state)[0], []
         v = float('-inf')
-        move = None
         moves = []
         for action in self.actions(state):
-            state[action//3][action%3] = self._get_mark()
+            state[action // 3][action % 3] = self._get_mark()
             # v = max(v, min_v(next_state))
             aux, act = self.min_value_ran(state)
             if aux > v:
                 v = aux
-                move = action
                 moves = []
-            state[action//3][action%3] = 0  # Undo move
+            state[action // 3][action % 3] = 0  # Undo move
             if save_actions and aux == v:
                 moves.append(action)
         return v, moves
@@ -232,27 +197,22 @@ class TicTacToeEnv(gym.Env):
     def min_value_ran(self, state, save_actions=False):
         if self.goal(state)[1]:
             return self.goal(state)[0], []
-
         v = float('inf')
-        move = None
         moves = []
         for action in self.actions(state):
-            state[action//3][action%3] = self._get_mark()
+            state[action // 3][action % 3] = self._get_mark()
             # v = max(v, min_v(next_state))
             aux, act = self.max_value_ran(state)
             if aux < v:
                 v = aux
-                move = action
                 moves = []
-            state[action//3][action%3] = 0  # Undo move
+            state[action // 3][action % 3] = 0  # Undo move
             if save_actions and aux == v:
                 moves.append(action)
         return v, moves
 
     def render_board(self, state):
-        w, h = 96, 96
-        image = Image.new('L', (w, h), color=128)
-        draw = ImageDraw.Draw(image)
+        image = Image.new('L', (WIDTH, HEIGHT), color=128)
         for i in range(BOARD_SIZE):
             for j in range(BOARD_SIZE):
                 if state[j][i] != 0:

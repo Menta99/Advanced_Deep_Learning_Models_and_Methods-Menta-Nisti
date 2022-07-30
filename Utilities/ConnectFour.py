@@ -10,13 +10,22 @@ X_REWARD = 1
 O_REWARD = -1
 TIE_REWARD = 0
 SYMBOLS_DICT = {0: '_', 1: 'X', -1: 'O'}
+WIDTH = 224
+HEIGHT = 192
 
 
 class ConnectFourEnv(gym.Env):
     def __init__(self, representation, agent_first):
         self.name = "ConnectFour"
+        self.representation = representation
+        self.agent_first = agent_first
+        assert self.representation in ['Tabular', 'Graphic'] and self.agent_first in [True, False, None]
         self.action_space = spaces.Discrete(ACTION_SPACE)
-        self.observation_space = spaces.Box(low=-1, high=1, shape=(COLUMNS, ROWS, 1), dtype=np.int32)
+        if self.representation == 'Tabular':
+            self.observation_space = spaces.Box(low=-1, high=1, shape=(COLUMNS, ROWS, 1), dtype=np.int32)
+        else:
+            self.observation_space = spaces.Box(low=0, high=255, shape=(WIDTH, HEIGHT, 1), dtype=np.int32)
+        self.action_space = spaces.Discrete(ACTION_SPACE)
         self.start_mark = 'X'
         self.state = np.zeros((COLUMNS, ROWS))
         self.representation = representation
@@ -263,8 +272,7 @@ class ConnectFourEnv(gym.Env):
         return v, moves
 
     def render_board(self, state):
-        w, h = 224, 192
-        image = Image.new('L', (w, h), color=128)
+        image = Image.new('L', (WIDTH, HEIGHT), color=128)
         draw = ImageDraw.Draw(image)
         for i in range(COLUMNS):
             for j in range(ROWS):

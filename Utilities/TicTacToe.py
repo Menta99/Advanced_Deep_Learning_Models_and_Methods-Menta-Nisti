@@ -90,11 +90,6 @@ class TicTacToeEnv(gym.Env):
         state[action] = self._get_mark()
         return state
 
-    # Utility to print the gameboard
-    def print_board(self):
-        for i in range(0, BOARD_SIZE ** 2, BOARD_SIZE):
-            print(SYMBOLS_DICT[self.state[0 + i]] + SYMBOLS_DICT[self.state[1 + i]] + SYMBOLS_DICT[self.state[2 + i]])
-
     def _get_mark(self):
         x_counter, o_counter = 0, 0
         for i in range(BOARD_SIZE ** 2):

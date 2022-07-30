@@ -8,6 +8,7 @@ expanded_action = False  # action_type == False -> ACTION SPACE 2,8,8
 # action_type == True -> ACTION SPACE 2,3,3,3,3
 
 ACTION_SPACE = np.array([[2, 8, 8], [2, 3, 3, 3, 3]]) #Deprecato
+#ACTION_SPACE = np.array([2, 3, 3, 3, 3, 5, 5]) #Deprecato
 ONE_REWARD = 1
 TWO_REWARD = -1
 TIE_REWARD = 0
@@ -76,7 +77,7 @@ class SantoriniEnv(gym.Env):
 
     def _assign_worker(self, player_num):
         coord = [np.random.choice(range(BOARD_SIZE)), np.random.choice(range(BOARD_SIZE))]
-        if self.state[coord[0]][coord[1]][LAYERS['player1'] + player_num] == 0:
+        if all(self.state[coord[0]][coord[1]][LAYERS['player1']:]) == 0:
             self.state[coord[0]][coord[1]][LAYERS['player1'] + player_num] = 1
             return coord
         else:

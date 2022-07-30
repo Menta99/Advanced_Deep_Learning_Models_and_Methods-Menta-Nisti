@@ -44,7 +44,7 @@ class OpponentWrapper(gym.Wrapper):
         elif self.env.name == 'Connect4':
             return [i for i in range(obs.shape[0]) if obs[i, obs.shape[1] - 1] == 0]
         elif self.env.name == 'Santorini':
-            return [0]
+            return self.env.actions()
         else:
             raise ValueError('Game provided does not exist!')
 

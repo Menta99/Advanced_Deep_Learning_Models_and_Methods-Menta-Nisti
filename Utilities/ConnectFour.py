@@ -1,7 +1,7 @@
 import gym
 from gym import spaces
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image
 
 ROWS = 6
 COLUMNS = 7
@@ -26,7 +26,6 @@ class ConnectFourEnv(gym.Env):
         else:
             self.observation_space = spaces.Box(low=0, high=255, shape=(WIDTH, HEIGHT, 1), dtype=np.int32)
         self.action_space = spaces.Discrete(ACTION_SPACE)
-        self.start_mark = 'X'
         self.state = np.zeros((COLUMNS, ROWS))
         self.representation = representation
         self.agent_first = agent_first
@@ -51,7 +50,6 @@ class ConnectFourEnv(gym.Env):
         return np.expand_dims(state, axis=-1)
 
     def reset(self):
-        self.start_mark = 'X'
         self.state = np.zeros((COLUMNS, ROWS))
         self.done = False
         return self._get_observation()
@@ -79,28 +77,19 @@ class ConnectFourEnv(gym.Env):
 
     # Returns all possible actions given the state
     def actions(self, state):
-        to_return = []
-        for col in range(COLUMNS):
-            if self.check_valid_action(state, col):
-                to_return.append(col)
-        return to_return
+        return [col for col in range(COLUMNS) if self.check_valid_action(state, col)]
 
-    # Checks wheter a final state is reached
+    # Checks whether a final state is reached
     def goal(self, state):
-        done = False
-        reward = 0
-        info = "Game not End"
-        win = self._check_diagonal(state) or self._check_horizontal(state) or self._check_vertical(state)
-        if win:
-            done = True
-            reward = X_REWARD if self._get_mark() == -1 else O_REWARD
-            info = "X won" if reward == X_REWARD else "O Won"
-        tie = len(self.actions(state)) == 0
-        if tie and not win:
-            done = True
-            reward = TIE_REWARD
-            info = "tie"
-        return reward, done, info
+        if len(self.actions(state)) == 0:
+            return TIE_REWARD, True, "Tie"
+        elif self._check_diagonal(state) or self._check_horizontal(state) or self._check_vertical(state):
+            if self._get_mark() == -1:
+                return X_REWARD, True, "X won"
+            else:
+                return O_REWARD, True, "O won"
+        else:
+            return 0, False, 'Game not End'
 
     # Returns Next state given current state and action
     def result(self, state, action):
@@ -114,16 +103,7 @@ class ConnectFourEnv(gym.Env):
 
     # Gets current player/symbol by looking at the state of the game (Implicitly 'X' is the first player)
     def _get_mark(self):
-        x_counter, o_counter = 0, 0
-        for i in range(COLUMNS):
-            for j in range(ROWS):
-                if self.state[i][j] != 0:
-                    if self.state[i][j] == 1:
-                        x_counter += 1
-                    else:
-                        o_counter += 1
-
-        return 1 if x_counter == o_counter else -1
+        return 1 if np.count_nonzero(self.state == 1) == np.count_nonzero(self.state == -1) else -1
 
     # Checks winning conditions -> 4 of the same symbol in a row, a column or diagonally
     def _check_horizontal(self, state):
@@ -273,7 +253,6 @@ class ConnectFourEnv(gym.Env):
 
     def render_board(self, state):
         image = Image.new('L', (WIDTH, HEIGHT), color=128)
-        draw = ImageDraw.Draw(image)
         for i in range(COLUMNS):
             for j in range(ROWS):
                 if state[i][j] != 0:

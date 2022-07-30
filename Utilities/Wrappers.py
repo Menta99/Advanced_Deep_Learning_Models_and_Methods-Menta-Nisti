@@ -23,7 +23,7 @@ class OpponentWrapper(gym.Wrapper):
 
     def get_opponent_action(self, obs):
         if self.agent_type == 'Random':
-            valid_actions = self.get_valid_actions(obs)
+            valid_actions = self.env.actions(obs)
             return valid_actions[np.random.randint(0, len(valid_actions))]
         elif self.agent_type == 'MinMax':
             return self.env.minmax(self.env.state)
@@ -37,16 +37,6 @@ class OpponentWrapper(gym.Wrapper):
             return None
         else:
             raise ValueError('Opponent provided does not exist!')
-
-    def get_valid_actions(self, obs):
-        if self.env.name == 'TicTacToe':
-            return [x[0] * obs.shape[0] + x[1] for x in np.argwhere(obs == 0)]
-        elif self.env.name == 'Connect4':
-            return [i for i in range(obs.shape[0]) if obs[i, obs.shape[1] - 1] == 0]
-        elif self.env.name == 'Santorini':
-            return self.env.actions()
-        else:
-            raise ValueError('Game provided does not exist!')
 
     def reset(self, **kwargs):
         obs = self.env.reset(**kwargs)

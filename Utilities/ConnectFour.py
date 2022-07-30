@@ -18,7 +18,7 @@ class ConnectFourEnv(gym.Env):
         self.action_space = spaces.Discrete(ACTION_SPACE)
         self.observation_space = spaces.Box(low=-1, high=1, shape=(COLUMNS, ROWS, 1), dtype=np.int32)
         self.start_mark = 'X'
-        self.state = [[0 for _ in range(ROWS)] for _ in range(COLUMNS)]
+        self.state = np.zeros((COLUMNS, ROWS))
         self.representation = representation
         self.agent_first = agent_first
         assert self.representation in ['Tabular', 'Graphic']
@@ -39,18 +39,18 @@ class ConnectFourEnv(gym.Env):
         return obs
 
     def to_image(self, state):
-        return np.expand_dims(np.array([state[i] for i in range(COLUMNS)]), axis=-1)
+        return np.expand_dims(state, axis=-1)
 
     def reset(self):
         self.start_mark = 'X'
-        self.state = [[0 for i in range(ROWS)] for j in range(COLUMNS)]
+        self.state = np.zeros((COLUMNS, ROWS))
         self.done = False
         return self._get_observation()
 
     # OpenAI Gym Environments standard function which returns next state given the action to perform, as well as the state of the game (Terminal/non Terminal), action reward and additional informations
     def step(self, action):
         invalidAction = False
-        if not self.check_valid_action(action):
+        if not self.check_valid_action(self.state, action):
             invalidAction = True
         if invalidAction:
             reward = -2 * self._get_mark()
@@ -65,14 +65,14 @@ class ConnectFourEnv(gym.Env):
         return self._get_observation(), reward, done, info
 
     # Returns True if the action is valid, else False
-    def check_valid_action(self, action):
-        return True if self.state[action][ROWS - 1] == 0 else False
+    def check_valid_action(self, state, action):
+        return True if state[action][ROWS - 1] == 0 else False
 
     # Returns all possible actions given the state
     def actions(self, state):
         to_return = []
         for col in range(COLUMNS):
-            if self.check_valid_action(col):
+            if self.check_valid_action(state, col):
                 to_return.append(col)
         return to_return
 
@@ -95,12 +95,12 @@ class ConnectFourEnv(gym.Env):
 
     # Returns Next state given current state and action
     def result(self, state, action):
-        state[action][len_occupied(state[action])] = self._get_mark()
+        state[action][sum(map(abs, state[action])).astype('int')] = self._get_mark()
         return state
 
     # Undo the last action
     def undo(self, state, action):
-        state[action][len_occupied(state[action]) - 1] = 0
+        state[action][sum(map(abs, state[action])).astype('int') - 1] = 0
         return state
 
     # Gets current player/symbol by looking at the state of the game (Implicitly 'X' is the first player)
@@ -210,6 +210,58 @@ class ConnectFourEnv(gym.Env):
                 break
         return v, move
 
+    def minmaxran(self, state, depth=3):
+        alpha = float('-inf')
+        beta = float('inf')
+        if self.goal(state)[1]:
+            return None
+        else:
+            if self._get_mark() == 1:
+                value, moves = self.max_value_ran(state, depth, True)
+                return np.random.choice(moves)
+            else:
+                value, moves = self.min_value_ran(state, depth, True)
+                return np.random.choice(moves)
+
+    def max_value_ran(self, state, depth, save_actions=False):
+        if self.goal(state)[1] or depth == 0:
+            return self.goal(state)[0], []
+        v = float('-inf')
+        move = None
+        moves = []
+        for action in self.actions(state):
+            state = self.result(state, action)
+            # v = max(v, min_v(next_state))
+            aux, act = self.min_value_ran(state, depth-1)
+            if aux > v:
+                v = aux
+                move = action
+                moves = []
+            state = self.undo(state, action)  # Undo move
+            if save_actions and aux == v:
+                moves.append(action)
+        return v, moves
+
+    def min_value_ran(self, state, depth, save_actions=False):
+        if self.goal(state)[1] or depth == 0:
+            return self.goal(state)[0], []
+
+        v = float('inf')
+        move = None
+        moves = []
+        for action in self.actions(state):
+            state = self.result(state, action)
+            # v = max(v, min_v(next_state))
+            aux, act = self.max_value_ran(state, depth-1)
+            if aux < v:
+                v = aux
+                move = action
+                moves = []
+            state = self.undo(state, action)  # Undo move
+            if save_actions and aux == v:
+                moves.append(action)
+        return v, moves
+
     def render_board(self, state):
         w, h = 224, 192
         image = Image.new('L', (w, h), color=128)
@@ -222,11 +274,3 @@ class ConnectFourEnv(gym.Env):
                     else:
                         image.paste(Image.new('L', (32, 32), color=0), (32 * i, -32 * j + 192 - 32))
         return image
-
-
-def len_occupied(vector):
-    counter = 0
-    for i in range(len(vector)):
-        if vector[i] != 0:
-            counter += 1
-    return counter

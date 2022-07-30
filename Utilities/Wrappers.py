@@ -18,12 +18,12 @@ class OpponentWrapper(gym.Wrapper):
         render = self.env.render_board(self.env.get_fixed_obs())
         if done:
             return obs, reward, done, info, render, None, None, None, None
-        obs_adv, reward_adv, done_adv, info_adv = self.env.step(self.get_opponent_action(obs))
+        obs_adv, reward_adv, done_adv, info_adv = self.env.step(self.get_opponent_action())
         return obs, reward, done, info, render, obs_adv, reward_adv, done_adv, info_adv
 
-    def get_opponent_action(self, obs):
+    def get_opponent_action(self):
         if self.agent_type == 'Random':
-            valid_actions = self.env.actions(obs)
+            valid_actions = self.env.actions(self.env.state)
             return valid_actions[np.random.randint(0, len(valid_actions))]
         elif self.agent_type == 'MinMax':
             return self.env.minmax(self.env.state)
@@ -41,7 +41,7 @@ class OpponentWrapper(gym.Wrapper):
     def reset(self, **kwargs):
         obs = self.env.reset(**kwargs)
         if not self.env.agent_first:
-            obs, _, _, _ = self.env.step(self.get_opponent_action(obs))
+            obs, _, _, _ = self.env.step(self.get_opponent_action())
         return obs
 
 

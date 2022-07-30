@@ -38,7 +38,7 @@ class ConnectFourEnv(gym.Env):
         if self.representation == 'Tabular':
             return obs
         else:
-            return np.asarray(self.render_board(obs))
+            return np.expand_dims(np.asarray(self.render_board(obs)), axis=-1)
 
     def get_fixed_obs(self):
         obs = self.to_image(self.state)
@@ -107,42 +107,26 @@ class ConnectFourEnv(gym.Env):
 
     # Checks winning conditions -> 4 of the same symbol in a row, a column or diagonally
     def _check_horizontal(self, state):
-        for i in range(0, ROWS):
-            cnt = 0
-            for j in range(0, COLUMNS - 1):
-                cnt = cnt + 1 if (state[j][i] == state[j + 1][i] and state[j][i] != 0) else 0
-                if cnt == 3:
+        for i in range(ROWS - 1, -1, -1):
+            for j in range(4):
+                if state[j, i] != 0 and state[j, i] == state[j + 1, i] == state[j + 2, i] == state[j + 3, i]:
                     return True
         return False
 
     def _check_vertical(self, state):
-        for i in range(0, COLUMNS):
-            cnt = 0
-            for j in range(0, ROWS - 1):
-                cnt = cnt + 1 if (state[i][j] == state[i][j + 1] and state[i][j] != 0) else 0
-                if cnt == 3:
+        for i in range(COLUMNS):
+            for j in range(2, -1, -1):
+                if state[i, j] != 0 and state[i, j] == state[i, j + 1] == state[i, j + 2] == state[i, j + 3]:
                     return True
         return False
 
     def _check_diagonal(self, state):
-        for i in range(COLUMNS):
-            for j in range(ROWS):
-                if 4 > i >= 0 and 3 > j >= 0:
-                    if (state[i][j] != 0 and state[i][j] == state[i + 1][j + 1] == state[i + 2][j + 2] == state[i + 3][
-                        j + 3]):
-                        return True
-                if 3 <= i < COLUMNS and 3 <= j < ROWS:
-                    if state[i][j] != 0 and state[i][j] == state[i - 1][j - 1] == state[i - 2][j - 2] == state[i - 3][
-                        j - 3]:
-                        return True
-                if COLUMNS > i >= 3 > j >= 0:
-                    if (state[i][j] != 0 and state[i][j] == state[i - 1][j + 1] == state[i - 2][j + 2] == state[i - 3][
-                        j + 3]):
-                        return True
-                if 4 > i >= 0 and 3 <= j < ROWS:
-                    if (state[i][j] != 0 and state[i][j] == state[i + 1][j - 1] == state[i + 2][j - 2] == state[i + 3][
-                        j - 3]):
-                        return True
+        for i in range(4):
+            for j in range(2, -1, -1):
+                if state[i, j] != 0 and state[i, j] == state[i + 1, j + 1] == state[i + 2, j + 2] == state[i + 3, j + 3]:
+                    return True
+                if state[i + 3, j] != 0 and state[i + 3, j] == state[i + 2, j + 1] == state[i + 1, j + 2] == state[i, j + 3]:
+                    return True
         return False
 
     ###############################################
@@ -221,7 +205,7 @@ class ConnectFourEnv(gym.Env):
         for action in self.actions(state):
             state = self.result(state, action)
             # v = max(v, min_v(next_state))
-            aux, act = self.min_value_ran(state, depth-1)
+            aux, act = self.min_value_ran(state, depth - 1)
             if aux > v:
                 v = aux
                 move = action
@@ -241,7 +225,7 @@ class ConnectFourEnv(gym.Env):
         for action in self.actions(state):
             state = self.result(state, action)
             # v = max(v, min_v(next_state))
-            aux, act = self.max_value_ran(state, depth-1)
+            aux, act = self.max_value_ran(state, depth - 1)
             if aux < v:
                 v = aux
                 move = action

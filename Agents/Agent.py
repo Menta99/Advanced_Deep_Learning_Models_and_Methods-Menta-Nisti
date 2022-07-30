@@ -2,15 +2,16 @@ import gym
 
 
 class Agent:
-    def __init__(self, environment, batch_size, checkpoint_dir='tmp/agent_name'):
-        self.environment = environment
-        self.state_space_shape = self.environment.observation_space.shape
-        if type(self.environment.action_space) == gym.spaces.Discrete:
-            self.action_space_shape = (self.environment.action_space.n,)
+    def __init__(self, observation_space, action_space, batch_size, checkpoint_dir='tmp/agent_name'):
+        self.observation_space = observation_space
+        self.action_space = action_space
+        self.state_space_shape = self.observation_space.shape
+        if type(self.action_space) == gym.spaces.Discrete:
+            self.action_space_shape = (self.action_space.n,)
             self.action_number = 1
         else:
-            self.action_space_shape = self.environment.action_space.nvec
-            self.action_number = self.environment.action_space.shape[0]
+            self.action_space_shape = self.action_space.nvec
+            self.action_number = self.action_space.shape[0]
         self.batch_size = batch_size
         self.learn_step_counter = 0
         self.time_step = 0

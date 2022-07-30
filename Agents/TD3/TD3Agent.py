@@ -10,7 +10,7 @@ import numpy as np
 
 
 class TD3Agent(Agent):
-    def __init__(self, environment, actor_net_dict, critic_1_net_dict, critic_2_net_dict, actor_target_net_dict,
+    def __init__(self, observation_space, action_space, actor_net_dict, critic_1_net_dict, critic_2_net_dict, actor_target_net_dict,
                  critic_1_target_net_dict, critic_2_target_net_dict, actor_net_update, target_net_update,
                  target_update_coefficient, discount_factor, actor_net_optimizer, critic_1_net_optimizer,
                  critic_2_net_optimizer, actor_target_net_optimizer, critic_1_target_net_optimizer,
@@ -20,7 +20,7 @@ class TD3Agent(Agent):
                  actor_target_net_loss, critic_1_target_net_loss, critic_2_target_net_loss, noise, num_episodes,
                  memory_size, memory_alpha, memory_beta, max_epsilon, min_epsilon, epsilon_A, epsilon_B, epsilon_C,
                  batch_size, checkpoint_dir):
-        super(TD3Agent, self).__init__(environment, batch_size, checkpoint_dir)
+        super(TD3Agent, self).__init__(observation_space, action_space, batch_size, checkpoint_dir)
         self.actor_net_dict = actor_net_dict
         self.critic_1_net_dict = critic_1_net_dict
         self.critic_2_net_dict = critic_2_net_dict

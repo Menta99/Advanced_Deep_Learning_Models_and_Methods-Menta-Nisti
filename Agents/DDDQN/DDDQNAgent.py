@@ -10,11 +10,11 @@ import numpy as np
 
 
 class DDDQNAgent(Agent):
-    def __init__(self, environment, q_net_dict, q_target_net_dict, double_q, dueling_q, q_net_update,
+    def __init__(self, observation_space, action_space, q_net_dict, q_target_net_dict, double_q, dueling_q, q_net_update,
                  q_target_net_update, discount_factor, q_net_optimizer, q_target_net_optimizer, q_net_learning_rate,
                  q_target_net_learning_rate, q_net_loss, q_target_net_loss, num_episodes, memory_size, memory_alpha,
                  memory_beta, max_epsilon, min_epsilon, epsilon_A, epsilon_B, epsilon_C, batch_size, checkpoint_dir):
-        super(DDDQNAgent, self).__init__(environment, batch_size, checkpoint_dir)
+        super(DDDQNAgent, self).__init__(observation_space, action_space, batch_size, checkpoint_dir)
         self.q_net_dict = q_net_dict
         self.q_target_net_dict = q_target_net_dict
         self.double_q = double_q

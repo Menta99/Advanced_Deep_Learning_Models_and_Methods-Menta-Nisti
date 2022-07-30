@@ -34,7 +34,7 @@ class TicTacToeEnv(gym.Env):
         if self.representation == 'Tabular':
             return obs
         else:
-            return np.asarray(self.render_board(obs))
+            return np.expand_dims(np.asarray(self.render_board(obs)), axis=-1)
 
     def get_fixed_obs(self):
         obs = self.to_image()

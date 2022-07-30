@@ -39,7 +39,7 @@ class ConnectFourEnv(gym.Env):
         return obs
 
     def to_image(self, state):
-        return np.expand_dims(state, axis=-1)
+        return np.expand_dims(np.flip(state, axis=1).T, axis=-1)
 
     def reset(self):
         self.start_mark = 'X'

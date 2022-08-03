@@ -77,7 +77,15 @@ class TurnGameTrainWizard:
     def test_agent(self):
         print('Running average is {}'.format(np.mean(self.episode_reward_history)))
         f = open(self.path + 'scores.pkl', 'wb')
-        self.eval_reward_history[self.frame_count] = [self.play_test_games('full_game_{}'.format(self.index))]
+        results = self.play_test_games('full_game_{}'.format(self.index))
+        self.eval_reward_history[self.evaluation_steps * self.index] = results
+        print('Test Results:\nAverage Score: {}\nAverage Game Length: {}'
+              .format(sum(i for i, _ in results)/self.evaluation_games, sum(j for _, j in results)/self.evaluation_games))
+        print('Test Running Average:\nRunning Average Score: {}\nRunning Average Game Length: {}'
+              .format(sum(i for t in list(self.eval_reward_history.values())[-self.running_average_length//self.evaluation_games:] for i, j in t)/
+                      (min(len(self.eval_reward_history)*self.evaluation_games, self.running_average_length)),
+                      sum(j for t in list(self.eval_reward_history.values())[-self.running_average_length//self.evaluation_games:] for i, j in t)/
+                      (min(len(self.eval_reward_history)*self.evaluation_games, self.running_average_length))))
         pickle.dump(self.eval_reward_history, f)
         f.close()
         #self.agent.save() # keep an eye on memory, CNN are huge

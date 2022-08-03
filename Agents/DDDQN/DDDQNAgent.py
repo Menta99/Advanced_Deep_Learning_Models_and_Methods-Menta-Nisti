@@ -42,10 +42,10 @@ class DDDQNAgent(Agent):
                                               self.action_number, self.memory_alpha)
 
         self.network_builder = NetworkBuilder()
-        self.q_net = self._init_network(self.q_net_dict, 'q_net', self.checkpoint_dir, self.q_net_optimizer,
+        self.q_net = self._init_network2(self.q_net_dict, 'q_net', self.checkpoint_dir, self.q_net_optimizer,
                                         self.q_net_learning_rate, self.q_net_loss)
         if self.double_q:
-            self.q_target_net = self._init_network(self.q_target_net_dict, 'q_target_net', self.checkpoint_dir,
+            self.q_target_net = self._init_network2(self.q_target_net_dict, 'q_target_net', self.checkpoint_dir,
                                                    self.q_target_net_optimizer, self.q_target_net_learning_rate,
                                                    self.q_target_net_loss)
             self._update_network_parameters(self.q_net, self.q_target_net, 1)
@@ -63,6 +63,21 @@ class DDDQNAgent(Agent):
                                      self.network_builder.build_network(val), name, checkpoint_dir)
         else:
             network = DQNetwork(self.network_builder.build_network(network_dict), name, checkpoint_dir)
+        network.compile(optimizer=optimizer(learning_rate=learning_rate), loss=loss)
+        return network
+
+    def _init_network2(self, network_dict, name, checkpoint_dir, optimizer, learning_rate, loss):
+        l0 = tf.keras.Input(shape=self.observation_space.shape)
+        l1 = tf.keras.layers.Conv2D(filters=32, kernel_size=(8, 8), strides=(4, 4), activation='relu',
+                                    kernel_initializer=tf.keras.initializers.HeNormal())(l0)
+        l2 = tf.keras.layers.Conv2D(filters=64, kernel_size=(4, 4), strides=(2, 2), activation='relu',
+                                    kernel_initializer=tf.keras.initializers.HeNormal())(l1)
+        l3 = tf.keras.layers.Conv2D(filters=64, kernel_size=(3, 3), activation='relu',
+                                    kernel_initializer=tf.keras.initializers.HeNormal())(l2)
+        l4 = tf.keras.layers.Flatten()(l3)
+        l5 = tf.keras.layers.Dense(units=512, activation='relu', kernel_initializer=tf.keras.initializers.HeNormal())(l4)
+        l6 = tf.keras.layers.Dense(units=9, activation='linear')(l5)
+        network = tf.keras.Model(inputs=l0, outputs=l6)
         network.compile(optimizer=optimizer(learning_rate=learning_rate), loss=loss)
         return network
 

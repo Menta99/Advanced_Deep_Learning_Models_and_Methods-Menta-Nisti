@@ -21,9 +21,9 @@ class TicTacToeEnv(gym.Env):
         assert self.representation in ['Tabular', 'Graphic'] and self.agent_first in [True, False, None]
         self.action_space = spaces.Discrete(ACTION_SPACE)
         if self.representation == 'Tabular':
-            self.observation_space = spaces.Box(low=-1, high=1, shape=(3, 3, 1), dtype=np.int32)
+            self.observation_space = spaces.Box(low=-1, high=1, shape=(3, 3, 1), dtype=np.int8)
         else:
-            self.observation_space = spaces.Box(low=0, high=255, shape=(WIDTH, HEIGHT, 1), dtype=np.int32)
+            self.observation_space = spaces.Box(low=0, high=255, shape=(WIDTH, HEIGHT, 1), dtype=np.uint8)
         self.state = np.zeros((3, 3))  # ACTION_SPACE * [0]
         self.turn = 0
         self.done = False
@@ -32,9 +32,9 @@ class TicTacToeEnv(gym.Env):
     def _get_observation(self):
         obs = self.get_fixed_obs()
         if self.representation == 'Tabular':
-            return obs
+            return np.array(obs, dtype=np.int8)
         else:
-            return np.expand_dims(np.asarray(self.render_board(obs)), axis=-1)
+            return np.expand_dims(np.asarray(self.render_board(obs), dtype=np.uint8), axis=-1)
 
     def get_fixed_obs(self):
         obs = self.to_image()
@@ -98,7 +98,8 @@ class TicTacToeEnv(gym.Env):
         return BOARD_SIZE in abs(np.sum(state, axis=0))
 
     def _check_diagonal(self, state):
-        return state[1][1] != 0 and (state[0][0] == state[1][1] == state[2][2] or state[2][0] == state[1][1] == state[0][2])
+        return state[1][1] != 0 and (
+                    state[0][0] == state[1][1] == state[2][2] or state[2][0] == state[1][1] == state[0][2])
 
     # Alpha Beta Pruning AI to select the best move
     def minmax(self, state):
@@ -150,66 +151,60 @@ class TicTacToeEnv(gym.Env):
                 break
         return v, move
 
-    # MiMax that returns a random non-suboptimal move
     def minmaxran(self, state):
-        if self.goal(state)[1]:
-            return None
-        else:
-            if self.turn == 0:
-                return np.random.choice([i for i in range(ACTION_SPACE)])
-            if self.turn == 1:
-                if state[1][1] != 0:
-                    return np.random.choice([0, 2, 6, 8])
-                elif state[0][0] != 0 or state[0][2] != 0 or state[2][0] != 0 or state[2][2] != 0:
-                    return 4
+        action = self.minmax(state)
+        if action == 4:
+            return action
+        elif action in [0, 2, 6, 8]:
+            if np.equal(np.flip(state, axis=1), state).all() and np.equal(np.flip(state, axis=0), state).all():
+                return np.random.choice([0, 2, 6, 8])
+            elif np.equal(np.flip(state, axis=1), state).all():
+                if action in [0, 2]:
+                    return np.random.choice([0, 2])
                 else:
-                    return np.random.choice(self.actions(state))
-            if self.turn == 2:
-                act = self._get_mark()
-                if state[0][1] == -act or state[1][0] == -act or state[1][2] == -act or state[2][1] == -act:
-                    if state[1][1] != 0:
-                        return 4
-                return np.random.choice(self.actions(state))
-            if self._get_mark() == 1:
-                value, moves = self.max_value_ran(state, True)
-                return np.random.choice(moves)
+                    return np.random.choice([6, 8])
+            elif np.equal(np.flip(state, axis=0), state).all():
+                if action in [0, 6]:
+                    return np.random.choice([0, 6])
+                else:
+                    return np.random.choice([2, 8])
+            elif np.equal(state.T, state).all():
+                if action in [2, 6]:
+                    return np.random.choice([2, 6])
+                else:
+                    return action
+            elif np.equal(state[::-1, ::-1].T, state).all():
+                if action in [0, 8]:
+                    return np.random.choice([0, 8])
+                else:
+                    return action
             else:
-                value, moves = self.min_value_ran(state, True)
-                return np.random.choice(moves)
-
-    def max_value_ran(self, state, save_actions=False):
-        if self.goal(state)[1]:
-            return self.goal(state)[0], []
-        v = float('-inf')
-        moves = []
-        for action in self.actions(state):
-            state[action // 3][action % 3] = self._get_mark()
-            # v = max(v, min_v(next_state))
-            aux, act = self.min_value_ran(state)
-            if aux > v:
-                v = aux
-                moves = []
-            state[action // 3][action % 3] = 0  # Undo move
-            if save_actions and aux == v:
-                moves.append(action)
-        return v, moves
-
-    def min_value_ran(self, state, save_actions=False):
-        if self.goal(state)[1]:
-            return self.goal(state)[0], []
-        v = float('inf')
-        moves = []
-        for action in self.actions(state):
-            state[action // 3][action % 3] = self._get_mark()
-            # v = max(v, min_v(next_state))
-            aux, act = self.max_value_ran(state)
-            if aux < v:
-                v = aux
-                moves = []
-            state[action // 3][action % 3] = 0  # Undo move
-            if save_actions and aux == v:
-                moves.append(action)
-        return v, moves
+                return action
+        else:
+            if np.equal(np.flip(state, axis=1), state).all() and np.equal(np.flip(state, axis=0), state).all():
+                return np.random.choice([1, 3, 5, 7])
+            elif np.equal(np.flip(state, axis=1), state).all():
+                if action in [3, 5]:
+                    return np.random.choice([3, 5])
+                else:
+                    return action
+            elif np.equal(np.flip(state, axis=0), state).all():
+                if action in [1, 7]:
+                    return np.random.choice([1, 7])
+                else:
+                    return action
+            elif np.equal(state.T, state).all():
+                if action in [1, 3]:
+                    return np.random.choice([1, 3])
+                else:
+                    return np.random.choice([5, 7])
+            elif np.equal(state[::-1, ::-1].T, state).all():
+                if action in [1, 5]:
+                    return np.random.choice([1, 5])
+                else:
+                    return np.random.choice([3, 7])
+            else:
+                return action
 
     def render_board(self, state):
         image = Image.new('L', (WIDTH, HEIGHT), color=128)

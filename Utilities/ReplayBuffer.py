@@ -3,6 +3,48 @@ import tensorflow as tf
 from Utilities.SegmentTree import SumSegmentTree, MinSegmentTree
 
 
+class ReplayBuffer:
+    def __init__(self, size, shape, actions):
+        assert size > 0 and size & (size - 1) == 0, 'size must me a positive power of 2'
+        self.size = size
+
+        assert shape is not None, 'shape must not be None'
+        self.shape = shape
+
+        assert actions > 0, 'actions must me greater than 0'
+        self.actions = actions
+
+        self.memory_initial_state = np.zeros((self.size, *self.shape))
+        self.memory_action = np.zeros((self.size, self.actions))
+        self.memory_reward = np.zeros(self.size)
+        self.memory_final_state = np.zeros((self.size, *self.shape))
+        self.memory_terminal = np.zeros(self.size, dtype=bool)
+
+        self.counter = 0
+
+    def push(self, initial_state, action, reward, final_state, terminal):
+        index = self.counter % self.size
+
+        self.memory_initial_state[index] = initial_state
+        self.memory_action[index] = action
+        self.memory_reward[index] = reward
+        self.memory_final_state[index] = final_state
+        self.memory_terminal[index] = terminal
+
+        self.counter += 1
+
+    def pop(self, batch_size):
+        indexes = np.random.choice(min(self.counter, self.size), batch_size, replace=False)
+
+        initial_states = self.memory_initial_state[indexes]
+        actions = self.memory_action[indexes]
+        rewards = self.memory_reward[indexes]
+        final_states = self.memory_final_state[indexes]
+        terminals = self.memory_terminal[indexes]
+
+        return initial_states, actions, rewards, final_states, terminals
+
+
 class PrioritizedReplayBuffer:
     def __init__(self, size, shape, actions, alpha):
         assert size > 0 and size & (size - 1) == 0, 'size must me a positive power of 2'

@@ -22,9 +22,9 @@ class ConnectFourEnv(gym.Env):
         assert self.representation in ['Tabular', 'Graphic'] and self.agent_first in [True, False, None]
         self.action_space = spaces.Discrete(ACTION_SPACE)
         if self.representation == 'Tabular':
-            self.observation_space = spaces.Box(low=-1, high=1, shape=(ROWS, COLUMNS, 1), dtype=np.int8)
+            self.observation_space = spaces.Box(low=0., high=1., shape=(ROWS, COLUMNS, 1), dtype=np.float32)
         else:
-            self.observation_space = spaces.Box(low=0, high=255, shape=(HEIGHT, WIDTH, 1), dtype=np.uint8)
+            self.observation_space = spaces.Box(low=0., high=1., shape=(HEIGHT, WIDTH, 1), dtype=np.float32)
         self.action_space = spaces.Discrete(ACTION_SPACE)
         self.state = np.zeros((COLUMNS, ROWS))
         self.representation = representation
@@ -34,11 +34,13 @@ class ConnectFourEnv(gym.Env):
         self.reset()
 
     def _get_observation(self):
-        obs = self.get_fixed_obs()
+        return self.normalize_obs(self.get_fixed_obs())
+
+    def normalize_obs(self, obs):
         if self.representation == 'Tabular':
-            return np.array(obs, dtype=np.int8)
+            return (np.array(obs, dtype=np.float32) + 1.) / 2.
         else:
-            return np.expand_dims(np.asarray(self.render_board(obs), dtype=np.uint8), axis=-1)
+            return np.expand_dims(np.asarray(self.render_board(obs), dtype=np.float32), axis=-1) / 255.
 
     def get_fixed_obs(self):
         obs = self.to_image(self.state)

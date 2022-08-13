@@ -30,7 +30,7 @@ def get_env(config, turn):
     else:
         raise ValueError('Game provided does not exist!')
 
-
+'''
 def get_network_dicts(representation):
     if representation == 'Tabular':
         network_dict_base = {0:
@@ -132,7 +132,7 @@ def get_network_dicts(representation):
         network_dict_base = {0:
                                  {'name': 'Conv2D',
                                   'params': {
-                                      'filters': 64,
+                                      'filters': 32,
                                       'kernel_size': (8, 8),
                                       'strides': (4, 4),
                                       'activation': 'relu',
@@ -141,7 +141,7 @@ def get_network_dicts(representation):
                              1:
                                  {'name': 'Conv2D',
                                   'params': {
-                                      'filters': 32,
+                                      'filters': 64,
                                       'kernel_size': (4, 4),
                                       'strides': (2, 2),
                                       'activation': 'relu',
@@ -150,7 +150,7 @@ def get_network_dicts(representation):
                              2:
                                  {'name': 'Conv2D',
                                   'params': {
-                                      'filters': 16,
+                                      'filters': 64,
                                       'kernel_size': (3, 3),
                                       'activation': 'relu',
                                       'kernel_initializer': tf.keras.initializers.HeNormal()
@@ -159,34 +159,31 @@ def get_network_dicts(representation):
                                   {'name': 'Flatten',
                                    'params': {}
                                    },
-                              3:
+                              4:
                                   {'name': 'Dense',
                                    'params': {
                                        'units': env.action_space.n,
-                                       'activation': 'relu',
-                                       'kernel_initializer': tf.keras.initializers.HeNormal()
+                                       'activation': 'linear'
                                    }}}
-    network_dict_value = {4:
+    network_dict_value = {5:
                               {'name': 'Flatten',
                                'params': {}
                                },
-                          5:
+                          7:
                               {'name': 'Dense',
                                'params': {
                                    'units': 1,
-                                   'activation': 'relu',
-                                   'kernel_initializer': tf.keras.initializers.HeNormal()
+                                   'activation': 'linear'
                                }}}
     return network_dict_base, network_dict_advantage, network_dict_value
-'''
 
 
 def get_agent(env, network_dict_base, network_dict_advantage, network_dict_value, network_path):
     return DDDQNAgent(observation_space=env.observation_space,
                       action_space=env.action_space,
-                      q_net_dict=network_dict_base,
-                      q_target_net_dict=network_dict_base,
-                      double_q=True,
+                      q_net_dict=[network_dict_base, network_dict_advantage, network_dict_value],
+                      q_target_net_dict=[network_dict_base, network_dict_advantage, network_dict_value],
+                      double_q=False,
                       dueling_q=False,
                       q_net_update=4,
                       q_target_net_update=10000,
@@ -199,22 +196,23 @@ def get_agent(env, network_dict_base, network_dict_advantage, network_dict_value
                       q_target_net_loss=keras.losses.Huber(),
                       num_episodes=50000,
                       memory_size=32768,
-                      memory_alpha=0.7,#0.7
-                      memory_beta=0.4,#0.4
+                      memory_alpha=0,#0.7
+                      memory_beta=0,#0.4
                       max_epsilon=1.0,
                       min_epsilon=0.05,
-                      epsilon_A=0.08,#0.35
+                      epsilon_A=0.06,#0.35
                       epsilon_B=0.05,#0.25
-                      epsilon_C=0.4,#0.1
+                      epsilon_C=1.5,#0.1
                       batch_size=32,
+                      max_norm_grad=10,
                       checkpoint_dir=network_path)
 
 
 if __name__ == '__main__':
-    for config in itertools.product(*[['TicTacToe'], ['Graphic'], ['MinMaxRandom'],
+    for config in itertools.product(*[['TicTacToe'], ['Graphic'], ['Random'],
                                       ['Random']]):
         print('Executing the following config: {}'.format(config))
-        algorithm = 'OLD_DDQN'
+        algorithm = 'CLIP'
         environment = config[0]
         representation = config[1]
         opponent = config[2]
@@ -238,7 +236,7 @@ if __name__ == '__main__':
                                      objective_score=1,
                                      running_average_length=100,
                                      evaluation_steps=50,
-                                     evaluation_games=10,
+                                     evaluation_games=5,
                                      representation=representation,
                                      agent_turn=turn,
                                      agent_turn_test=None,

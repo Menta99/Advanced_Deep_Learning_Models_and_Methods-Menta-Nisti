@@ -21,20 +21,22 @@ class TicTacToeEnv(gym.Env):
         assert self.representation in ['Tabular', 'Graphic'] and self.agent_first in [True, False, None]
         self.action_space = spaces.Discrete(ACTION_SPACE)
         if self.representation == 'Tabular':
-            self.observation_space = spaces.Box(low=-1, high=1, shape=(3, 3, 1), dtype=np.int8)
+            self.observation_space = spaces.Box(low=0., high=1., shape=(3, 3, 1), dtype=np.float32)
         else:
-            self.observation_space = spaces.Box(low=0, high=255, shape=(WIDTH, HEIGHT, 1), dtype=np.uint8)
+            self.observation_space = spaces.Box(low=0., high=1., shape=(WIDTH, HEIGHT, 1), dtype=np.float32)
         self.state = np.zeros((3, 3))  # ACTION_SPACE * [0]
         self.turn = 0
         self.done = False
         self.reset()
 
     def _get_observation(self):
-        obs = self.get_fixed_obs()
+        return self.normalize_obs(self.get_fixed_obs())
+
+    def normalize_obs(self, obs):
         if self.representation == 'Tabular':
-            return np.array(obs, dtype=np.int8)
+            return (np.array(obs, dtype=np.float32) + 1.) / 2.
         else:
-            return np.expand_dims(np.asarray(self.render_board(obs), dtype=np.uint8), axis=-1)
+            return np.expand_dims(np.asarray(self.render_board(obs), dtype=np.float32), axis=-1) / 255.
 
     def get_fixed_obs(self):
         obs = self.to_image()
@@ -99,7 +101,7 @@ class TicTacToeEnv(gym.Env):
 
     def _check_diagonal(self, state):
         return state[1][1] != 0 and (
-                    state[0][0] == state[1][1] == state[2][2] or state[2][0] == state[1][1] == state[0][2])
+                state[0][0] == state[1][1] == state[2][2] or state[2][0] == state[1][1] == state[0][2])
 
     # Alpha Beta Pruning AI to select the best move
     def minmax(self, state):

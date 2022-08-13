@@ -8,6 +8,7 @@ from Utilities.TicTacToe import TicTacToeEnv
 from Wrappers import make_atari_test, wrap_deepmind, OpponentWrapper
 from tqdm import tqdm
 from PIL import Image
+from termcolor import colored
 
 
 class TurnGameTrainWizard:
@@ -65,34 +66,55 @@ class TurnGameTrainWizard:
             self.agent.store(state_init, action, reward, state_next, done)
         elif done_adv:
             self.episode_reward += reward_adv
-            self.agent.store(state_init, action, reward_adv, state_next, done)
+            # self.agent.store(state_init, action, reward_adv, state_next, done)
+            self.agent.store(state_init, action, reward_adv, state_next_adv, done_adv)
         else:
-            self.agent.store(state_init, action, reward, state_next, done)
+            # self.agent.store(state_init, action, reward, state_next, done)
+            self.agent.store(state_init, action, reward_adv, state_next_adv, done_adv)
             state_init = state_next_adv
 
-        self.agent.learn()
+        self.agent.learn2()
 
         return state_init, done or done_adv
 
     def test_agent(self):
-        print('Running average is {}'.format(np.mean(self.episode_reward_history)))
+        # print('Running average is {}'.format(np.mean(self.episode_reward_history)))
         f = open(self.path + 'scores.pkl', 'wb')
         results = self.play_test_games('full_game_{}'.format(self.index))
         self.eval_reward_history[self.evaluation_steps * self.index] = results
-        print('Test Results:\nAverage Score: {}\nAverage Game Length: {}'
-              .format(sum(i for i, _ in results)/self.evaluation_games, sum(j for _, j in results)/self.evaluation_games))
-        print('Test Running Average:\nRunning Average Score: {}\nRunning Average Game Length: {}'
-              .format(sum(i for t in list(self.eval_reward_history.values())[-self.running_average_length//self.evaluation_games:] for i, j in t)/
-                      (min(len(self.eval_reward_history)*self.evaluation_games, self.running_average_length)),
-                      sum(j for t in list(self.eval_reward_history.values())[-self.running_average_length//self.evaluation_games:] for i, j in t)/
-                      (min(len(self.eval_reward_history)*self.evaluation_games, self.running_average_length))))
+        self.display_stats(results)
         pickle.dump(self.eval_reward_history, f)
         f.close()
-        #self.agent.save() # keep an eye on memory, CNN are huge
+        # self.agent.save() # keep an eye on memory, CNN are huge
         self.index += 1
 
+    def display_stats(self, results):
+        text = 'Test Results:\nAverage Score: {:.2f}\nAverage Game Length: {:.2f}\nWins: ' \
+               '{} | Losses: {} | Ties: {} | Invalid: {}' \
+               '\nTest Running Average:\nRunning Average Score: {:.2f}\nRunning Average Game Length: {:.2f}'. \
+            format(sum(i for i, _ in results) / self.evaluation_games,
+                   sum(j for _, j in results) / self.evaluation_games,
+                   sum(1 for i, _ in results if i == 1), sum(1 for i, _ in results if i == -1),
+                   sum(1 for i, _ in results if i == 0), sum(1 for i, _ in results if i == -2),
+                   sum(i for t in
+                       list(self.eval_reward_history.values())[-self.running_average_length // self.evaluation_games:]
+                       for i, j in t) / (
+                       min(len(self.eval_reward_history) * self.evaluation_games, self.running_average_length)),
+                   sum(j for t in
+                       list(self.eval_reward_history.values())[-self.running_average_length // self.evaluation_games:]
+                       for i, j in t) / (
+                       min(len(self.eval_reward_history) * self.evaluation_games, self.running_average_length)))
+        lines = text.splitlines()
+        width = max(len(s) for s in lines)
+        res = ['┌' + '─' * (width + 2) + '┐']
+        for s in lines:
+            res.append('│ ' + (s + ' ' * width)[:width] + ' │')
+        res.append('└' + '─' * (width + 2) + '┘')
+        print(colored('\n'.join(res), 'magenta'))
+
     def update_stats(self):
-        print(self.frame_count, self.episode_reward, self.agent._epsilon_scheduler(), self.environment.agent_first)
+        print('Frame Count : {} | Episode Reward : {} | Epsilon : {:.3f} | Agent First : {}'.
+              format(self.frame_count, self.episode_reward, self.agent._epsilon_scheduler(), self.environment.agent_first))
         self.episode_reward_history[(self.games_played - 1) % self.running_average_length] = self.episode_reward
 
         if np.mean(self.episode_reward_history) > self.objective_score:
@@ -139,7 +161,7 @@ class TurnGameTrainWizard:
         temp_time_step = self.agent.time_step
         temp_min_epsilon = self.agent.min_epsilon
         self.agent.time_step = self.agent.num_episodes
-        self.agent.exploration_final_eps = 0
+        self.agent.min_epsilon = 0
         init_state = test_env.reset()
         return test_env, temp_time_step, temp_min_epsilon, init_state
 
@@ -152,7 +174,8 @@ class TurnGameTrainWizard:
         while not done and not done_adv:
             game_frame.append(test_env.render_board(test_env.get_fixed_obs()))
             action = self.agent.act(state_init)
-            state_next, reward, done, info, render, state_next_adv, reward_adv, done_adv, info_adv = test_env.step(action[0])
+            state_next, reward, done, info, render, state_next_adv, reward_adv, done_adv, info_adv = test_env.step(
+                action[0])
             game_frame.append(render)
             if done:
                 score += reward
@@ -168,7 +191,6 @@ class TurnGameTrainWizard:
         return score, len(game_frame)
 
     def save_game_gif(self, frames, file_name, score):
-        print('Game len: ', len(frames), ' frames')
-        print('Game score: ', score)
-        #frames = [Image.fromarray(i) for i in frames]
+        # print('Game len: ', len(frames), ' frames')
+        # print('Game score: ', score)
         frames[0].save(self.path + 'GIFs\\' + file_name + '.gif', save_all=True, append_images=frames[1:], duration=500)

@@ -7,9 +7,7 @@ import cv2
 
 class OpponentWrapper(gym.Wrapper):
     def __init__(self, env, agent_type):
-        """Create an environment that implicitly uses a simulated adversary
-        """
-        gym.Wrapper.__init__(self, env)
+        super().__init__(env)
         self.agent_type = agent_type
         assert agent_type in ['Random', 'MinMax', 'MinMaxRandom', 'MonteCarlo', 'Network'], 'Select a valid opponent'
 
@@ -17,9 +15,9 @@ class OpponentWrapper(gym.Wrapper):
         obs, reward, done, info = self.env.step(action)
         render = self.env.render_board(self.env.get_fixed_obs())
         if done:
-            return obs, reward, done, info, render, None, None, None, None
+            return obs, reward, done, {'info': info}, render
         obs_adv, reward_adv, done_adv, info_adv = self.env.step(self.get_opponent_action())
-        return obs, reward, done, info, render, obs_adv, reward_adv, done_adv, info_adv
+        return obs_adv, reward_adv, done_adv, {'info': info_adv}, render
 
     def get_opponent_action(self):
         if self.agent_type == 'Random':
@@ -29,12 +27,6 @@ class OpponentWrapper(gym.Wrapper):
             return self.env.minmax(self.env.state)
         elif self.agent_type == 'MinMaxRandom':
             return self.env.minmaxran(self.env.state)
-        elif self.agent_type == 'MonteCarlo':
-            # call to MonteCarlo method of the environent
-            return None
-        elif self.agent_type == 'Network':
-            # call to Network layers method of the to provide the best action given the obs
-            return None
         else:
             raise ValueError('Opponent provided does not exist!')
 

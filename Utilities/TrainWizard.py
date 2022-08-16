@@ -5,10 +5,9 @@ import numpy as np
 from Utilities.ConnectFour import ConnectFourEnv
 from Utilities.Santorini import SantoriniEnv
 from Utilities.TicTacToe import TicTacToeEnv
-from Wrappers import make_atari_test, wrap_deepmind, OpponentWrapper
-from tqdm import tqdm
-from PIL import Image
 from termcolor import colored
+
+from Utilities.Wrappers import OpponentWrapper
 
 
 class TurnGameTrainWizard:
@@ -57,28 +56,18 @@ class TurnGameTrainWizard:
         return state
 
     def update_agent(self, state_init):
-        action = self.agent.act(state_init)
-        state_next, reward, done, info, render, state_next_adv, reward_adv, done_adv, info_adv = self.environment.step(
-            action[0])
-
+        action = self.agent.act(state_init, False)
+        state_next, reward, done, info, render = self.environment.step(action[0])
+        self.agent.store(state_init, action, reward, state_next, done)
+        state_init = state_next
         if done:
             self.episode_reward += reward
-            self.agent.store(state_init, action, reward, state_next, done)
-        elif done_adv:
-            self.episode_reward += reward_adv
-            # self.agent.store(state_init, action, reward_adv, state_next, done)
-            self.agent.store(state_init, action, reward_adv, state_next_adv, done_adv)
-        else:
-            # self.agent.store(state_init, action, reward, state_next, done)
-            self.agent.store(state_init, action, reward_adv, state_next_adv, done_adv)
-            state_init = state_next_adv
 
-        self.agent.learn2()
+        self.agent.learn()
 
-        return state_init, done or done_adv
+        return state_init, done
 
     def test_agent(self):
-        # print('Running average is {}'.format(np.mean(self.episode_reward_history)))
         f = open(self.path + 'scores.pkl', 'wb')
         results = self.play_test_games('full_game_{}'.format(self.index))
         self.eval_reward_history[self.evaluation_steps * self.index] = results
@@ -89,10 +78,13 @@ class TurnGameTrainWizard:
         self.index += 1
 
     def display_stats(self, results):
-        text = 'Test Results:\nAverage Score: {:.2f}\nAverage Game Length: {:.2f}\nWins: ' \
+        text = 'History:\nTime Step: {} | Learning Step: {}\nEpsilon: {} | Last Loss: {}\n' \
+               'Test Results:\nAverage Score: {:.2f}\nAverage Game Length: {:.2f}\nWins: ' \
                '{} | Losses: {} | Ties: {} | Invalid: {}' \
                '\nTest Running Average:\nRunning Average Score: {:.2f}\nRunning Average Game Length: {:.2f}'. \
-            format(sum(i for i, _ in results) / self.evaluation_games,
+            format(self.agent.time_step, self.agent.learn_step_counter,
+                   self.agent.epsilon_scheduler(), self.agent.last_loss,
+                   sum(i for i, _ in results) / self.evaluation_games,
                    sum(j for _, j in results) / self.evaluation_games,
                    sum(1 for i, _ in results if i == 1), sum(1 for i, _ in results if i == -1),
                    sum(1 for i, _ in results if i == 0), sum(1 for i, _ in results if i == -2),
@@ -113,10 +105,7 @@ class TurnGameTrainWizard:
         print(colored('\n'.join(res), 'magenta'))
 
     def update_stats(self):
-        print('Frame Count : {} | Episode Reward : {} | Epsilon : {:.3f} | Agent First : {}'.
-              format(self.frame_count, self.episode_reward, self.agent._epsilon_scheduler(), self.environment.agent_first))
         self.episode_reward_history[(self.games_played - 1) % self.running_average_length] = self.episode_reward
-
         if np.mean(self.episode_reward_history) > self.objective_score:
             print("Solved at episode {}!".format(self.agent.time_step))
             return True
@@ -141,7 +130,7 @@ class TurnGameTrainWizard:
     def play_test_games(self, file_name):
         scores = []
         agent_first = self.agent_turn_test
-        for _ in tqdm(range(self.evaluation_games)):
+        for _ in range(self.evaluation_games):
             if self.agent_turn_test is None:
                 agent_first = np.random.choice([True, False])
             scores.append(self.play_full_game(None, agent_first, False))
@@ -158,39 +147,26 @@ class TurnGameTrainWizard:
         else:
             raise ValueError('Game provided does not exist!')
         test_env = OpponentWrapper(test_env, self.opponent)
-        temp_time_step = self.agent.time_step
-        temp_min_epsilon = self.agent.min_epsilon
-        self.agent.time_step = self.agent.num_episodes
-        self.agent.min_epsilon = 0
         init_state = test_env.reset()
-        return test_env, temp_time_step, temp_min_epsilon, init_state
+        return test_env, init_state
 
     def play_full_game(self, file_name, agent_first, gif):
-        test_env, temp_time_step, temp_min_epsilon, state_init = self.init_test(agent_first)
+        test_env, state_init = self.init_test(agent_first)
         game_frame = []
         score = 0
         done = False
-        done_adv = False
-        while not done and not done_adv:
+        while not done:
             game_frame.append(test_env.render_board(test_env.get_fixed_obs()))
-            action = self.agent.act(state_init)
-            state_next, reward, done, info, render, state_next_adv, reward_adv, done_adv, info_adv = test_env.step(
-                action[0])
+            action = self.agent.act(state_init, True)
+            state_next, reward, done, info, render = test_env.step(action[0])
+            state_init = state_next
             game_frame.append(render)
             if done:
                 score += reward
-            elif done_adv:
-                game_frame.append(test_env.render_board(test_env.get_fixed_obs()))
-                score += reward_adv
-            else:
-                state_init = state_next_adv
+        game_frame.append(test_env.render_board(test_env.get_fixed_obs()))
         if gif:
-            self.save_game_gif(game_frame, file_name, score)
-        self.agent.time_step = temp_time_step
-        self.agent.min_epsilon = temp_min_epsilon
+            self.save_game_gif(game_frame, file_name)
         return score, len(game_frame)
 
-    def save_game_gif(self, frames, file_name, score):
-        # print('Game len: ', len(frames), ' frames')
-        # print('Game score: ', score)
+    def save_game_gif(self, frames, file_name):
         frames[0].save(self.path + 'GIFs\\' + file_name + '.gif', save_all=True, append_images=frames[1:], duration=500)

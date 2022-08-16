@@ -75,13 +75,13 @@ class TicTacToeEnv(gym.Env):
 
     # Checks wheter a final state is reached
     def goal(self, state):
-        if len(self.actions(state)) == 0:
-            return TIE_REWARD, True, "Tie"
-        elif self._check_diagonal(state) or self._check_horizontal(state) or self._check_vertical(state):
+        if self._check_diagonal(state) or self._check_horizontal(state) or self._check_vertical(state):
             if self._get_mark() == -1:
                 return X_REWARD, True, "X won"
             else:
                 return O_REWARD, True, "O won"
+        elif len(self.actions(state)) == 0:
+            return TIE_REWARD, True, "Tie"
         else:
             return 0, False, 'Game not End'
 

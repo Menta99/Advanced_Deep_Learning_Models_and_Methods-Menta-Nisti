@@ -12,7 +12,8 @@ from Utilities.Wrappers import OpponentWrapper
 
 class TurnGameTrainWizard:
     def __init__(self, environment, agent, objective_score, running_average_length, evaluation_steps,
-                 evaluation_games, representation, agent_turn, agent_turn_test, opponent, path):
+                 evaluation_games, representation, agent_turn, agent_turn_test, opponent, data_path,
+                 gif_path, save_agent_checkpoints):
         self.agent = agent
         self.objective_score = objective_score
         self.running_average_length = running_average_length
@@ -23,7 +24,9 @@ class TurnGameTrainWizard:
         self.agent_turn = agent_turn
         self.agent_turn_test = agent_turn_test
         self.opponent = opponent
-        self.path = path
+        self.data_path = data_path
+        self.gif_path = gif_path
+        self.save_agent_checkpoints = save_agent_checkpoints
         self.episode_reward = 0
         self.episode_reward_history = [-np.inf for _ in range(running_average_length)]
         self.games_played = 0
@@ -68,13 +71,14 @@ class TurnGameTrainWizard:
         return state_init, done
 
     def test_agent(self):
-        f = open(self.path + 'scores.pkl', 'wb')
+        f = open(self.data_path + 'scores.pkl', 'wb')
         results = self.play_test_games('full_game_{}'.format(self.index))
         self.eval_reward_history[self.evaluation_steps * self.index] = results
         self.display_stats(results)
         pickle.dump(self.eval_reward_history, f)
         f.close()
-        # self.agent.save() # keep an eye on memory, CNN are huge
+        if self.save_agent_checkpoints:
+            self.agent.save()
         self.index += 1
 
     def display_stats(self, results):
@@ -169,4 +173,4 @@ class TurnGameTrainWizard:
         return score, len(game_frame)
 
     def save_game_gif(self, frames, file_name):
-        frames[0].save(self.path + 'GIFs\\' + file_name + '.gif', save_all=True, append_images=frames[1:], duration=500)
+        frames[0].save(self.gif_path + file_name + '.gif', save_all=True, append_images=frames[1:], duration=500)

@@ -106,7 +106,7 @@ class TurnGameTrainWizard:
         for s in lines:
             res.append('│ ' + (s + ' ' * width)[:width] + ' │')
         res.append('└' + '─' * (width + 2) + '┘')
-        print(colored('\n'.join(res), 'magenta'))
+        print(colored('\n'.join(res), 'green'))
 
     def update_stats(self):
         self.episode_reward_history[(self.games_played - 1) % self.running_average_length] = self.episode_reward

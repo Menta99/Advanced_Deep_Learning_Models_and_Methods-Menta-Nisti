@@ -3,23 +3,26 @@ from gym import spaces
 import numpy as np
 from collections import deque
 import cv2
+import ast
+from Utilities.Santorini import ACTIONS
 
 
 class OpponentWrapper(gym.Wrapper):
     def __init__(self, env, agent_type):
         super().__init__(env)
         self.agent_type = agent_type
-        assert agent_type in ['Random', 'MinMax', 'MinMaxRandom', 'MonteCarlo', 'Network'], 'Select a valid opponent'
+        assert agent_type in ['Random', 'MinMax', 'MinMaxRandom', 'MonteCarlo'], 'Select a valid opponent'
 
     def step(self, action):
+        action = to_action(action, self.env.name)
         obs, reward, done, info = self.env.step(action)
         render = self.env.render_board(self.env.get_fixed_obs())
         if done:
             return obs, reward, done, {'info': info}, render
-        obs_adv, reward_adv, done_adv, info_adv = self.env.step(self.get_opponent_action())
+        obs_adv, reward_adv, done_adv, info_adv = self.env.step(self.get_opponent_action(action))
         return obs_adv, reward_adv, done_adv, {'info': info_adv}, render
 
-    def get_opponent_action(self):
+    def get_opponent_action(self, action=None):
         if self.agent_type == 'Random':
             valid_actions = self.env.actions(self.env.state)
             return valid_actions[np.random.randint(0, len(valid_actions))]
@@ -27,6 +30,27 @@ class OpponentWrapper(gym.Wrapper):
             return self.env.minmax(self.env.state)
         elif self.agent_type == 'MinMaxRandom':
             return self.env.minmaxran(self.env.state)
+        elif self.agent_type == 'MonteCarlo':
+            if action is None:
+                node = self.env.mc_node
+                for _ in range(5000):
+                    node.rollout_simulation(node.state, node.player_one_workers, node.player_two_workers,
+                                            node.player_one, self.env, 4)
+                action, node = node.best_move()
+                self.env.mc_node = node
+                return ast.literal_eval(action)
+            else:
+                node = self.env.mc_node
+                if len(node.children) == 0:
+                    node.expand(self.env)
+                node = self.env.mc_node.children[str(action)]
+                print(node.player_one)
+                for _ in range(5000):
+                    node.rollout_simulation(node.state, node.player_one_workers, node.player_two_workers,
+                                            node.player_one, self.env, 4)
+                action, node = node.best_move()
+                self.env.mc_node = node
+                return ast.literal_eval(action)
         else:
             raise ValueError('Opponent provided does not exist!')
 
@@ -324,3 +348,15 @@ def wrap_deepmind(env, episode_life=True, clip_rewards=True, frame_stack=False, 
     if frame_stack:
         env = FrameStack(env, 4)
     return env
+
+
+def to_action(value, game):
+    if game == "TicTacToe":
+        return value
+    elif game == "ConnectFour":
+        return value
+    elif game == "Santorini":
+        worker = value // 64
+        movement = ACTIONS[(value % 64) // 8]
+        build = ACTIONS[(value % 64) % 8]
+        return [worker, movement[0], movement[1], build[0], build[1]]

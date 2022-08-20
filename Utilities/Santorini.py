@@ -3,10 +3,16 @@ import gym
 from gym import spaces
 import numpy as np
 from PIL import Image, ImageDraw
+import math
+import copy
+import sys
+import random
+
+#from Utilities.MCTS import MC_Tree
 
 BOARD_SIZE = 5
 
-ACTION_SPACE = np.array([2, 3, 3, 3, 3, 5, 5])
+ACTION_SPACE = 128#np.array([2, 3, 3, 3, 3, 5, 5])
 ONE_REWARD = 1
 TWO_REWARD = -1
 TIE_REWARD = 0
@@ -33,35 +39,43 @@ ACTIONS = {
 class SantoriniEnv(gym.Env):
     def __init__(self, representation, agent_first, random_init=True):
         self.name = "Santorini"
-        self.action_space = spaces.MultiDiscrete(ACTION_SPACE)
+        self.action_space = spaces.Discrete(ACTION_SPACE)
         self.observation_space = spaces.Box(low=0, high=1, shape=(BOARD_SIZE, BOARD_SIZE, len(LAYERS), 1),
                                             dtype=np.int32)
         self.player_one = True
         self.turn = 0
         self.random_init = random_init
-        self.state = np.zeros((BOARD_SIZE, BOARD_SIZE, len(LAYERS)))
+        self.state = np.zeros((BOARD_SIZE, BOARD_SIZE, len(LAYERS))).astype("int8")
         self.player_one_workers = [[], []]
         self.player_two_workers = [[], []]
         self.representation = representation
         self.agent_first = agent_first
         assert self.representation in ['Tabular', 'Graphic']
         self.done = False
+        self.exploration_parameter = 1  # math.sqrt(2)
         self.reset()
 
-    def reset(self):
-        self.state = np.zeros((BOARD_SIZE, BOARD_SIZE, len(LAYERS)))
+    def reset(self, mcts=False):
+        self.state = np.zeros((BOARD_SIZE, BOARD_SIZE, len(LAYERS))).astype("int8")
         self.player_one = True
         self.turn = 0
         self.done = False
 
         if self.random_init:
             self.turn = 4
-
-            for i in range(len(self.player_one_workers)):
-                self.player_one_workers[i] = self._assign_worker(0)
-                self.player_two_workers[i] = self._assign_worker(1)
+            self._assign_worker(None)
+            # for i in range(len(self.player_one_workers)):
+            #    self.player_one_workers[i] = self._assign_worker(0)
+            #    self.player_two_workers[i] = self._assign_worker(1)
+        if mcts:
+            self.mc_node = MC_Tree(self.state, self.player_one_workers, self.player_two_workers, self.player_one, None)
+            for _ in range(10000):
+                self.mc_node.rollout_simulation(self.mc_node.state, self.mc_node.player_one_workers,
+                                                self.mc_node.player_two_workers, self.mc_node.player_one, self, 4)
+        # self.exploration_parameter = 0
 
         return self._get_observation()
+
 
     def _get_observation(self):
         obs = self.get_fixed_obs()
@@ -73,17 +87,26 @@ class SantoriniEnv(gym.Env):
     def get_fixed_obs(self):
         obs = np.expand_dims(self.state, axis=-1)
         if not self.agent_first:
-            obs = np.concatenate([obs[:, :, 1:2, :], obs[:, :, 0:1, :], obs[:, :, 2:, :]], axis=-2)
+            obs = np.concatenate([obs[:, :, 1:2, :], obs[:, :, 0:1, :], obs[:, :, 2:, :]], axis=-2) # FIX player on last 2 layers
         return obs
 
     def _assign_worker(self, player_num, action=None):
         if self.random_init:
-            coord = [np.random.choice(range(BOARD_SIZE)), np.random.choice(range(BOARD_SIZE))]
-            if all(self.state[coord[0]][coord[1]][LAYERS['player1']:] == 0):
-                self.state[coord[0]][coord[1]][LAYERS['player1'] + player_num] = 1
-                return coord
-            else:
-                return self._assign_worker(player_num)
+            self.player_one_workers[0] = [1, 1]
+            self.state[1][1][LAYERS['player1']] = 1
+            self.player_one_workers[1] = [3, 3]
+            self.state[3][3][LAYERS['player1']] = 1
+            self.player_two_workers[0] = [1, 3]
+            self.state[1][3][LAYERS['player2']] = 1
+            self.player_two_workers[1] = [3, 1]
+            self.state[3][1][LAYERS['player2']] = 1
+            return
+            # coord = [np.random.choice(range(BOARD_SIZE)), np.random.choice(range(BOARD_SIZE))]
+            # if all(self.state[coord[0]][coord[1]][LAYERS['player1']:] == 0):
+            #    self.state[coord[0]][coord[1]][LAYERS['player1'] + player_num] = 1
+            #    return coord
+            # else:
+            #    return self._assign_worker(player_num)
         elif action is not None:
             if all(self.state[action[5]][action[6]][LAYERS['player1']:] == 0):
                 self.state[action[5]][action[6]][LAYERS['player1'] + player_num] = 1
@@ -92,10 +115,11 @@ class SantoriniEnv(gym.Env):
                 return [], True
         return
 
-    # OpenAI Gym Environments standard function which returns next state given the action to perform, as well as the state of the game (Terminal/non Terminal), action reward and additional informations
+    # OpenAI Gym Environments standard function which returns next state given the action to perform,
+    # as well as the state of the game (Terminal/non-Terminal), action reward and additional information
     def step(self, action):
 
-        if len(action) == 3:  # 2,8,8 ---> 2, 3,3, 3,3
+        if action is not None and len(action) == 3:  # 2,8,8 ---> 2, 3,3, 3,3
             action = expand_action(action)
 
         player_num = 0 if self.player_one else 1
@@ -127,7 +151,8 @@ class SantoriniEnv(gym.Env):
                 reward = -reward
             return self._get_observation(), reward, done, info
 
-        if not self.check_valid_action(action):
+        if not self.check_valid_action(self.state, action, self.player_one_workers, self.player_two_workers,
+                                       self.player_one):
             reward = -2 * ONE_REWARD if player_num == 0 else -2 * TWO_REWARD
             info = "Illegal action by player 1" if player_num == 0 else "Illegal action by player 2"
             done = True
@@ -135,44 +160,62 @@ class SantoriniEnv(gym.Env):
                 reward = -reward
             return self._get_observation(), reward, done, info
 
-        coord_worker = self.player_one_workers[action[0]] if self.player_one else self.player_two_workers[action[0]]
+        self.state, self.player_one_workers, self.player_two_workers, self.player_one, self.turn = self.result(
+            self.state, action, self.player_one_workers, self.player_two_workers, self.player_one, self.turn)
 
-        self.state[coord_worker[0]][coord_worker[1]][LAYERS['player1'] + player_num] = 0
-        self.state[coord_worker[0] + action[1]][coord_worker[1] + action[2]][LAYERS['player1'] + player_num] = 1
-
-        if self.player_one:
-            self.player_one_workers[action[0]] = [coord_worker[0] + action[1], coord_worker[1] + action[2]]
-        else:
-            self.player_two_workers[action[0]] = [coord_worker[0] + action[1], coord_worker[1] + action[2]]
-
-        coord_worker = self.player_one_workers[action[0]] if self.player_one else self.player_two_workers[action[0]]
-
-        self._build(coord_worker[0] + action[3], coord_worker[1] + action[4])
-
-        self.player_one = not self.player_one
-        self.turn += 1
-
-        reward, done, info = self.goal()
+        reward, done, info = self.goal(self.state)
         if not self.agent_first:
             reward = -reward
         return self._get_observation(), reward, done, info
 
-    def _build(self, build_row, build_column):
+    def result(self, state, action, player_one_workers, player_two_workers, player_one, turn):
+
+        state_copy = state.copy()
+        player_one_workers_copy = player_one_workers.copy()
+        player_two_workers_copy = player_two_workers.copy()
+
+        player_num = 0 if player_one else 1
+
+        coord_worker = player_one_workers_copy[action[0]] if player_one else player_two_workers_copy[action[0]]
+
+        state_copy[coord_worker[0]][coord_worker[1]][LAYERS['player1'] + player_num] = 0
+
+        state_copy[coord_worker[0] + action[1]][coord_worker[1] + action[2]][LAYERS['player1'] + player_num] = 1
+
+        if player_one:
+            player_one_workers_copy[action[0]] = [coord_worker[0] + action[1], coord_worker[1] + action[2]]
+        else:
+            player_two_workers_copy[action[0]] = [coord_worker[0] + action[1], coord_worker[1] + action[2]]
+
+        coord_worker = player_one_workers_copy[action[0]] if player_one else player_two_workers_copy[action[0]]
+
+        state_copy = self._build(state_copy, coord_worker[0] + action[3], coord_worker[1] + action[4])
+
+        player_one = not player_one
+        turn += 1
+        return state_copy, player_one_workers_copy, player_two_workers_copy, player_one, turn
+
+    def _build(self, state, build_row, build_column):
+        state_copy = state.copy()
         level = 0
-        while self.state[build_row][build_column][level] == 1 and level < 3:
+        while state_copy[build_row][build_column][level] == 1 and level < 3:
             level += 1
-        self.state[build_row][build_column][level] = 1
-        return
+        state_copy[build_row][build_column][level] = 1
+        return state_copy
 
     # Returns True if the action is valid, else False
-    def check_valid_action(self, action):
+    def check_valid_action(self, state, action, player_one_workers, player_two_workers, player_one):
+        state_copy = state.copy()
+        player_one_workers_copy = player_one_workers.copy()
+        player_two_workers_copy = player_two_workers.copy()
+
         if len(action) == 3:  # 2,8,8 ---> 2, 3,3, 3,3
             action = expand_action(action)
 
         if action[1] == action[2] == 0 or action[3] == action[4] == 0:
             return False  # invalid action no movement/build on spot
 
-        coord_worker = self.player_one_workers[action[0]] if self.player_one else self.player_two_workers[action[0]]
+        coord_worker = player_one_workers_copy[action[0]] if player_one else player_two_workers_copy[action[0]]
         coord_landing = [coord_worker[0] + action[1], coord_worker[1] + action[2]]
         coord_building = [coord_landing[0] + action[3], coord_landing[1] + action[4]]
 
@@ -182,35 +225,36 @@ class SantoriniEnv(gym.Env):
         if any(i > 4 for i in coord_building) or any(i < 0 for i in coord_building):
             return False  # building out of list
 
-        if any(self.state[coord_landing[0]][coord_landing[1]][3:]) == 1:
+        if any(state_copy[coord_landing[0]][coord_landing[1]][3:]) == 1:
             return False  # no move for occupied or dome
 
-        if any(self.state[coord_building[0]][coord_building[1]][3:]) == 1:
+        if any(state_copy[coord_building[0]][coord_building[1]][
+               3:]) == 1 and coord_building != coord_worker:  # Second term allows to build where the worker was before moving
             return False  # no building for occupied or dome
 
-        if sum(self.state[coord_landing[0]][coord_landing[1]][:3]) > sum(
-                self.state[coord_worker[0]][coord_worker[1]][:3]) + 1:
+        if sum(state_copy[coord_landing[0]][coord_landing[1]][:3]) > sum(
+                state_copy[coord_worker[0]][coord_worker[1]][:3]) + 1:
             return False  # too high destination
 
         return True
 
     # Returns all possible actions given the state in the expanded form
-    def actions(self, state):
+    def actions(self, state, player_one_workers, player_two_workers, player_one):
         actions = []
         for action in itertools.product(*[[0, 1], [-1, 0, 1], [-1, 0, 1], [-1, 0, 1], [-1, 0, 1]]):
             action = list(action)
-            if self.check_valid_action(action):
+            if self.check_valid_action(state, action, player_one_workers, player_two_workers, player_one):
                 actions.append(action)
         return actions
 
     # Checks whether a final state is reached
-    def goal(self):
+    def goal(self, state):
         for i in range(BOARD_SIZE):
             for j in range(BOARD_SIZE):
-                if self.state[i][j][LAYERS['third']] == 1:
-                    if self.state[i][j][LAYERS['player1']] == 1:
+                if state[i][j][LAYERS['third']] == 1:
+                    if state[i][j][LAYERS['player1']] == 1:
                         return ONE_REWARD, True, "player one wins"
-                    elif self.state[i][j][LAYERS['player2']] == 1:
+                    elif state[i][j][LAYERS['player2']] == 1:
                         return TWO_REWARD, True, "player two wins"
         return 0, False, "game not end"
 

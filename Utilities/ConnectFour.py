@@ -95,8 +95,9 @@ class ConnectFourEnv(gym.Env):
 
     # Returns Next state given current state and action
     def result(self, state, action):
-        state[action][sum(map(abs, state[action])).astype('int')] = self._get_mark()
-        return state
+        state_copy = state.copy()
+        state_copy[action][sum(map(abs, state_copy[action])).astype('int')] = 1 if np.count_nonzero(state_copy == 1) == np.count_nonzero(state_copy == -1) else -1
+        return state_copy
 
     # Undo the last action
     def undo(self, state, action):

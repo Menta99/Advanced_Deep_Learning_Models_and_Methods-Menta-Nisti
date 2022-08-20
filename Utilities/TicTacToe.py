@@ -1,4 +1,5 @@
 import gym
+import copy
 from PIL import Image
 from gym import spaces
 import numpy as np
@@ -87,8 +88,9 @@ class TicTacToeEnv(gym.Env):
 
     # Returns Next state given current state and action
     def result(self, state, action):
-        state[action // 3][action % 3] = self._get_mark()
-        return state
+        state_copy = state.copy()
+        state_copy[action // 3][action % 3] = 1 if np.count_nonzero(state_copy == 1) == np.count_nonzero(state_copy == -1) else -1#self._get_mark()
+        return state_copy
 
     def _get_mark(self):
         return 1 if np.count_nonzero(self.state == 1) == np.count_nonzero(self.state == -1) else -1

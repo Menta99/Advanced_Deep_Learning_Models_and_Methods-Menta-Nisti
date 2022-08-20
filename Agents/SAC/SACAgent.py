@@ -2,7 +2,7 @@ import os
 import pickle
 
 from Agents.Agent import Agent
-from Network import SingleNetwork
+from Agents.SAC.Network import SingleNetwork
 from Utilities.NetworkBuilder import NetworkBuilder
 from Utilities.ReplayBuffer import ReplayBuffer, PrioritizedReplayBuffer
 import tensorflow as tf

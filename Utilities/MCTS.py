@@ -2,7 +2,17 @@ import copy
 import math
 import numpy as np
 import random
-from Utilities.Santorini import ACTIONS
+
+ACTIONS = {
+    0: [1, -1],
+    1: [1, 0],
+    2: [1, 1],
+    3: [0, -1],
+    4: [0, 1],
+    5: [-1, -1],
+    6: [-1, 0],
+    7: [-1, 1]
+}
 
 
 class MC_Tree:
@@ -231,13 +241,13 @@ class SelfPlayMCTS(MC_Tree):
                 1 + node[1].N))
         # at = argmax(Q(st,a) + U(st,a)  where U(st, a) = Cpuct * P(s,a) * (sum(N(s,b))^0.5) / (1 + N(s,a))
 
-    def sample_action(self):
-        weights = []
-        nodes = []
-        for child in self.children.items():
-            nodes.append(child)
-            weights.append(child[1].P)
-        return random.choices(nodes, weights=weights)#lambda node: node[1].P)
+    # def sample_action(self):
+    #    weights = []
+    #    nodes = []
+    #    for child in self.children.items():
+    #        nodes.append(child)
+    #        weights.append(child[1].P)
+    #    return random.choices(nodes, weights=weights)#lambda node: node[1].P)
 
     def update(self, value, winner):
         v = value if self.player_one == winner else -value

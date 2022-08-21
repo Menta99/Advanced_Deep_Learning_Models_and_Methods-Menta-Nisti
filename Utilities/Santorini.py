@@ -7,12 +7,11 @@ import math
 import copy
 import sys
 import random
-
-#from Utilities.MCTS import MC_Tree
+from Utilities.MCTS import MC_Tree
 
 BOARD_SIZE = 5
 
-ACTION_SPACE = 128#np.array([2, 3, 3, 3, 3, 5, 5])
+ACTION_SPACE = 128  # np.array([2, 3, 3, 3, 3, 5, 5])
 ONE_REWARD = 1
 TWO_REWARD = -1
 TIE_REWARD = 0
@@ -40,7 +39,7 @@ class SantoriniEnv(gym.Env):
     def __init__(self, representation, agent_first, random_init=True):
         self.name = "Santorini"
         self.action_space = spaces.Discrete(ACTION_SPACE)
-        self.observation_space = spaces.Box(low=0, high=1, shape=(BOARD_SIZE, BOARD_SIZE, len(LAYERS), 1),
+        self.observation_space = spaces.Box(low=-1, high=1, shape=(BOARD_SIZE, BOARD_SIZE, len(LAYERS), 1), # LOW -1
                                             dtype=np.int32)
         self.player_one = True
         self.turn = 0
@@ -54,8 +53,9 @@ class SantoriniEnv(gym.Env):
         self.done = False
         self.exploration_parameter = 1  # math.sqrt(2)
         self.reset()
+        self.mc_tree = MC_Tree(self.state, self.player_one_workers, self.player_two_workers, self.player_one, None)
 
-    def reset(self, mcts=False):
+    def reset(self):
         self.state = np.zeros((BOARD_SIZE, BOARD_SIZE, len(LAYERS))).astype("int8")
         self.player_one = True
         self.turn = 0
@@ -64,18 +64,7 @@ class SantoriniEnv(gym.Env):
         if self.random_init:
             self.turn = 4
             self._assign_worker(None)
-            # for i in range(len(self.player_one_workers)):
-            #    self.player_one_workers[i] = self._assign_worker(0)
-            #    self.player_two_workers[i] = self._assign_worker(1)
-        if mcts:
-            self.mc_node = MC_Tree(self.state, self.player_one_workers, self.player_two_workers, self.player_one, None)
-            for _ in range(10000):
-                self.mc_node.rollout_simulation(self.mc_node.state, self.mc_node.player_one_workers,
-                                                self.mc_node.player_two_workers, self.mc_node.player_one, self, 4)
-        # self.exploration_parameter = 0
-
         return self._get_observation()
-
 
     def _get_observation(self):
         obs = self.get_fixed_obs()
@@ -87,7 +76,7 @@ class SantoriniEnv(gym.Env):
     def get_fixed_obs(self):
         obs = np.expand_dims(self.state, axis=-1)
         if not self.agent_first:
-            obs = np.concatenate([obs[:, :, 1:2, :], obs[:, :, 0:1, :], obs[:, :, 2:, :]], axis=-2) # FIX player on last 2 layers
+            obs = np.concatenate([obs[:, :, 0:4, :], obs[:, :, 5:6, :], obs[:, :, 4:5, :]], axis=-2) # FIX player on last 2 layers
         return obs
 
     def _assign_worker(self, player_num, action=None):
@@ -95,11 +84,11 @@ class SantoriniEnv(gym.Env):
             self.player_one_workers[0] = [1, 1]
             self.state[1][1][LAYERS['player1']] = 1
             self.player_one_workers[1] = [3, 3]
-            self.state[3][3][LAYERS['player1']] = 1
+            self.state[3][3][LAYERS['player1']] = -1
             self.player_two_workers[0] = [1, 3]
             self.state[1][3][LAYERS['player2']] = 1
             self.player_two_workers[1] = [3, 1]
-            self.state[3][1][LAYERS['player2']] = 1
+            self.state[3][1][LAYERS['player2']] = -1
             return
             # coord = [np.random.choice(range(BOARD_SIZE)), np.random.choice(range(BOARD_SIZE))]
             # if all(self.state[coord[0]][coord[1]][LAYERS['player1']:] == 0):
@@ -180,7 +169,7 @@ class SantoriniEnv(gym.Env):
 
         state_copy[coord_worker[0]][coord_worker[1]][LAYERS['player1'] + player_num] = 0
 
-        state_copy[coord_worker[0] + action[1]][coord_worker[1] + action[2]][LAYERS['player1'] + player_num] = 1
+        state_copy[coord_worker[0] + action[1]][coord_worker[1] + action[2]][LAYERS['player1'] + player_num] = 1 if action[0] == 0 else -1
 
         if player_one:
             player_one_workers_copy[action[0]] = [coord_worker[0] + action[1], coord_worker[1] + action[2]]
@@ -225,11 +214,11 @@ class SantoriniEnv(gym.Env):
         if any(i > 4 for i in coord_building) or any(i < 0 for i in coord_building):
             return False  # building out of list
 
-        if any(state_copy[coord_landing[0]][coord_landing[1]][3:]) == 1:
+        if any(state_copy[coord_landing[0]][coord_landing[1]][3:]) != 0:
             return False  # no move for occupied or dome
 
         if any(state_copy[coord_building[0]][coord_building[1]][
-               3:]) == 1 and coord_building != coord_worker:  # Second term allows to build where the worker was before moving
+               3:]) != 0 and coord_building != coord_worker:  # Second term allows to build where the worker was before moving
             return False  # no building for occupied or dome
 
         if sum(state_copy[coord_landing[0]][coord_landing[1]][:3]) > sum(
@@ -252,9 +241,9 @@ class SantoriniEnv(gym.Env):
         for i in range(BOARD_SIZE):
             for j in range(BOARD_SIZE):
                 if state[i][j][LAYERS['third']] == 1:
-                    if state[i][j][LAYERS['player1']] == 1:
+                    if state[i][j][LAYERS['player1']] != 0:
                         return ONE_REWARD, True, "player one wins"
-                    elif state[i][j][LAYERS['player2']] == 1:
+                    elif state[i][j][LAYERS['player2']] != 0:
                         return TWO_REWARD, True, "player two wins"
         return 0, False, "game not end"
 
@@ -272,10 +261,16 @@ class SantoriniEnv(gym.Env):
                     image.paste(Image.new('L', (16, 16), color=255 // 5 * 3), (32 * i + 8, 32 * j + 8))
                 if state[i][j][3] == 1:
                     image.paste(Image.new('L', (8, 8), color=255 // 5 * 4), (32 * i + 12, 32 * j + 12))
-                if state[i][j][4] == 1:
-                    draw.text((32 * i + 13, 32 * j + 11), 'X', fill=255)
-                if state[i][j][5] == 1:
-                    draw.text((32 * i + 13, 32 * j + 11), 'O', fill=255)
+                if state[i][j][4] != 0:
+                    if state[i][j][4] == 1:
+                        draw.text((32 * i + 13, 32 * j + 11), 'A', fill=255)
+                    elif state[i][j][4] == -1:
+                        draw.text((32 * i + 13, 32 * j + 11), 'B', fill=255)
+                if state[i][j][5] != 0:
+                    if state[i][j][5] == 1:
+                        draw.text((32 * i + 13, 32 * j + 11), 'C', fill=255)
+                    elif state[i][j][5] == -1:
+                        draw.text((32 * i + 13, 32 * j + 11), 'D', fill=255)
         return image
 
 

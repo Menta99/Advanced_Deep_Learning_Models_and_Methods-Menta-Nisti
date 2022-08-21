@@ -67,7 +67,7 @@ class ConnectFourEnv(gym.Env):
                 reward = -reward
             return self._get_observation(), reward, True, 'invalid_action_error'
         else:
-            self.result(self.state, action)
+            self.state = self.result(self.state, action)
         reward, done, info = self.goal(self.state)
         if not self.agent_first:
             reward = -reward

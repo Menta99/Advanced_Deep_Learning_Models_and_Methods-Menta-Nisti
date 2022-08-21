@@ -1,3 +1,5 @@
+import ast
+
 from Utilities.MCTS import SelfPlayMCTS
 from Agents.Agent import Agent
 from Agents.SelfPlay.Network import SelfPlayNetwork
@@ -91,18 +93,24 @@ class SelfPlayAgent(Agent):
         done = False
         first, second = (challenger, defender) if random.randint(0, 1) == 0 else (defender, challenger)
         while not done:
-            value, actions = first.predict(state_to_input_model(env.state, env.name))  #env.state.reshape(-1,5,5,6))
-            obs, reward, done, info = env.step(self.sample_action(actions.squeeze(), env))
-            env.render_board(env.state).show() #TOGLILO
+            mcts = get_mcts(env)
+            for _ in range(self.mcts_simulations):
+                mcts.rollout_simulation(env, first)
+            action, mcts = mcts.select_next()
+            obs, reward, done, info = env.step(ast.literal_eval(action))
             if done and challenger == first and reward == 1:  #challenger == first:  # conta il caso in cui la partita finisca per assenza di azioni
                 challenger_wins += 1
                 break
-            if done and reward == 0:
+            elif done and reward == 0:
                 challenger_wins +=1
                 break
-            value, actions = second.predict(state_to_input_model(env.state, env.name))
-            obs, reward, done, info = env.step(self.sample_action(actions.squeeze(), env))
-            env.render_board(env.state).show() #TOGLILO
+            elif done:
+                break
+            mcts = get_mcts(env)
+            for _ in range(self.mcts_simulations):
+                mcts.rollout_simulation(env, second)
+            action, mcts = mcts.select_next()
+            obs, reward, done, info = env.step(ast.literal_eval(action))
             if done and challenger == second and reward == -1: #challenger == second:
                 challenger_wins += 1
                 break
@@ -112,15 +120,15 @@ class SelfPlayAgent(Agent):
         print("challenger won" if challenger_wins else "challenger lost")
         return challenger_wins
 
-    def sample_action(self, actions, env):
-        action = np.argmax(actions)
-        possible_actions = env.actions(env.state, env.player_one_workers, env.player_two_workers, env.player_one) if env.name == "Santorini" else env.actions(env.state)
-        if len(possible_actions) == 0:
-            return None
-        while to_action(action, env.name) not in possible_actions: #while not env.check_valid_action(env.state, to_action(action, env.name), env.player_one_workers, env.player_two_workers, env.player_one):
-            actions[action] = float("-inf")
-            action = np.argmax(actions)
-        return to_action(action, env.name)
+    #def sample_action(self, actions, env):
+    #    action = np.argmax(actions)
+    #    possible_actions = env.actions(env.state, env.player_one_workers, env.player_two_workers, env.player_one) if env.name == "Santorini" else env.actions(env.state)
+    #    if len(possible_actions) == 0:
+    #        return None
+    #    while to_action(action, env.name) not in possible_actions: #while not env.check_valid_action(env.state, to_action(action, env.name), env.player_one_workers, env.player_two_workers, env.player_one):
+    #        actions[action] = float("-inf")
+    #        action = np.argmax(actions)
+    #    return to_action(action, env.name)
 
     def play_episode(self, env, nnet, simulation_num=640):
         memories = []
@@ -132,7 +140,7 @@ class SelfPlayAgent(Agent):
             for _ in range(simulation_num):
                 mcts.rollout_simulation(env, nnet)
             memories.append([mcts.get_relative_state(env.name, turn % 2), mcts.prior_actions, None])
-            mcts = mcts.sample_action()[0][1]
+            mcts = mcts.select_next()[1]
             mcts.parent = None  # drop the top part of the tree : Methods, Play
             turn += 1
             if env.goal(mcts.state)[1]:  # if game over
@@ -187,17 +195,16 @@ def get_mcts(env):
         mcts = SelfPlayMCTS(prior_action=None, value=None, parent=None, state=env.state)
     return mcts
 
-"""
+
 if __name__ == '__main__':
     environment = TicTacToeEnv("Tabular", True)
     agent = SelfPlayAgent(observation_space=environment.observation_space, action_space=environment.action_space, batch_size=16,
-                          checkpoint_dir='tmp/selfplayagent/' + environment.name, mini_batches=16, episodes=30, mcts_simulations=30, iterations=10, learning_rate=0.001)
+                          checkpoint_dir='tmp/selfplayagent/' + environment.name, mini_batches=16, episodes=10, mcts_simulations=60, iterations=10, learning_rate=0.01)
     trained = agent.learn(environment)
     trained.save('tmp/trained/'+ environment.name)
     # Counter:
     # step -> time-step self-play
     # number update network
-"""
 
 """
 if __name__ == '__main__':
@@ -210,5 +217,5 @@ if __name__ == '__main__':
     env.reset()
     env.render_board(env.state)
     for _ in range(5):
-        agent.compare_players(agent.model, agent.model, env)
+        agent.play_episode(env, agent.model, 60)
 """

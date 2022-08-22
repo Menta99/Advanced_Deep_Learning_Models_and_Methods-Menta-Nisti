@@ -141,6 +141,7 @@ class SelfPlayAgent(Agent):
                 mcts.rollout_simulation(env, nnet)
             memories.append([mcts.get_relative_state(env.name, turn % 2), mcts.prior_actions, None])
             mcts = mcts.select_next()[1]
+            env.render_board(mcts.state).show()
             mcts.parent = None  # drop the top part of the tree : Methods, Play
             turn += 1
             if env.goal(mcts.state)[1]:  # if game over
@@ -195,7 +196,7 @@ def get_mcts(env):
         mcts = SelfPlayMCTS(prior_action=None, value=None, parent=None, state=env.state)
     return mcts
 
-
+"""
 if __name__ == '__main__':
     environment = TicTacToeEnv("Tabular", True)
     agent = SelfPlayAgent(observation_space=environment.observation_space, action_space=environment.action_space, batch_size=16,
@@ -205,8 +206,8 @@ if __name__ == '__main__':
     # Counter:
     # step -> time-step self-play
     # number update network
-
 """
+
 if __name__ == '__main__':
     new_nnet = keras.models.load_model('tmp/trained/TicTacToe')
     env = TicTacToeEnv("Tabular", True)
@@ -216,6 +217,5 @@ if __name__ == '__main__':
     agent.model = new_nnet
     env.reset()
     env.render_board(env.state)
-    for _ in range(5):
-        agent.play_episode(env, agent.model, 60)
-"""
+    #for _ in range(5):
+    agent.play_episode(env, agent.model, 60)

@@ -53,7 +53,7 @@ class SantoriniEnv(gym.Env):
         self.done = False
         self.exploration_parameter = 1  # math.sqrt(2)
         self.reset()
-        self.mc_tree = MC_Tree(self.state, self.player_one_workers, self.player_two_workers, self.player_one, None)
+        self.mc_node = MC_Tree(None, self.state, self.player_one_workers, self.player_two_workers, self.player_one)
 
     def reset(self):
         self.state = np.zeros((BOARD_SIZE, BOARD_SIZE, len(LAYERS))).astype("int8")
@@ -64,6 +64,7 @@ class SantoriniEnv(gym.Env):
         if self.random_init:
             self.turn = 4
             self._assign_worker(None)
+        self.mc_node = MC_Tree(None, self.state, self.player_one_workers, self.player_two_workers, self.player_one)
         return self._get_observation()
 
     def _get_observation(self):
@@ -152,7 +153,7 @@ class SantoriniEnv(gym.Env):
         self.state, self.player_one_workers, self.player_two_workers, self.player_one, self.turn = self.result(
             self.state, action, self.player_one_workers, self.player_two_workers, self.player_one, self.turn)
 
-        reward, done, info = self.goal(self.state)
+        reward, done, info = self.goal(self.state, self.player_one_workers, self.player_two_workers, self.player_one)
         if not self.agent_first:
             reward = -reward
         return self._get_observation(), reward, done, info
@@ -237,7 +238,7 @@ class SantoriniEnv(gym.Env):
         return actions
 
     # Checks whether a final state is reached
-    def goal(self, state):
+    def goal(self, state, player_one_workers, player_two_workers, player_one):
         for i in range(BOARD_SIZE):
             for j in range(BOARD_SIZE):
                 if state[i][j][LAYERS['third']] == 1:
@@ -245,6 +246,10 @@ class SantoriniEnv(gym.Env):
                         return ONE_REWARD, True, "player one wins"
                     elif state[i][j][LAYERS['player2']] != 0:
                         return TWO_REWARD, True, "player two wins"
+        if len(self.actions(state, player_one_workers, player_two_workers, True)) == 0:
+            return TWO_REWARD, True, "player 1 doesn't have legal moves, player 2 wins"
+        elif len(self.actions(state, player_one_workers, player_two_workers, False)) == 0:
+            return ONE_REWARD, True, "player 2 doesn't have legal moves, player 1 wins"
         return 0, False, "game not end"
 
     def render_board(self, state):

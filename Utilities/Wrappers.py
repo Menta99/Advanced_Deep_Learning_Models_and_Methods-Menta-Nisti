@@ -5,6 +5,7 @@ from collections import deque
 import cv2
 import ast
 from Utilities.Santorini import ACTIONS
+from MCTS import MC_Tree
 
 
 class OpponentWrapper(gym.Wrapper):
@@ -24,7 +25,7 @@ class OpponentWrapper(gym.Wrapper):
 
     def get_opponent_action(self, action=None):
         if self.agent_type == 'Random':
-            valid_actions = self.env.actions(self.env.state)
+            valid_actions = self.env.actions(self.env.state, self.env.player_one_workers, self.env.player_two_workers, self.env.player_one) if self.env.name=="Santorini" else self.env.actions(self.env.state)
             return valid_actions[np.random.randint(0, len(valid_actions))]
         elif self.agent_type == 'MinMax':
             return self.env.minmax(self.env.state)
@@ -33,7 +34,7 @@ class OpponentWrapper(gym.Wrapper):
         elif self.agent_type == 'MonteCarlo':
             if action is None:
                 node = self.env.mc_node
-                for _ in range(5000):
+                for _ in range(500): # SELECT RANGE
                     node.rollout_simulation(node.state, node.player_one_workers, node.player_two_workers,
                                             node.player_one, self.env, 4)
                 action, node = node.best_move()
@@ -44,8 +45,7 @@ class OpponentWrapper(gym.Wrapper):
                 if len(node.children) == 0:
                     node.expand(self.env)
                 node = self.env.mc_node.children[str(action)]
-                print(node.player_one)
-                for _ in range(5000):
+                for _ in range(500):
                     node.rollout_simulation(node.state, node.player_one_workers, node.player_two_workers,
                                             node.player_one, self.env, 4)
                 action, node = node.best_move()

@@ -92,7 +92,8 @@ class MC_Tree:
             to_update.append(node)
 
             # Expansion
-        if not environment.goal(node.state)[1]:
+        if (not environment.goal(node.state, node.player_one_workers, node.player_two_workers, node.player_one)[1]) if \
+                environment.name == "Santorini" else (not environment.goal(node.state)[1]):
             node.expand(environment)
 
             # Simulation
@@ -108,7 +109,7 @@ class MC_Tree:
                     state = environment.result(state, actions[np.random.choice(len(actions))])
                 else:
                     break
-            player_one = environment._get_mark() == 1
+            player_one = (1 if np.count_nonzero(state == 1) == np.count_nonzero(state == -1) else -1) == 1
             reward = player_one == environment.agent_first
 
         if environment.name == "ConnectFour":
@@ -118,11 +119,11 @@ class MC_Tree:
                     state = environment.result(state)
                 else:
                     break
-            player_one = environment._get_mark() == 1
+            player_one = (1 if np.count_nonzero(state == 1) == np.count_nonzero(state == -1) else -1) == 1
             reward = player_one == environment.agent_first
 
         if environment.name == "Santorini":
-            while not environment.goal(state)[1]:
+            while not environment.goal(state, player_one_workers, player_two_workers, player_one)[1]:
                 actions = environment.actions(state, player_one_workers, player_two_workers, player_one)
                 if len(actions) > 0:
                     state, player_one_workers, player_two_workers, player_one, _ = environment.result(state, actions[
@@ -181,12 +182,14 @@ class SelfPlayMCTS(MC_Tree):
             to_update.append(node)
 
         # Expansion
-        if not environment.goal(node.state)[1]:
+        if (not environment.goal(node.state, node.player_one_workers, node.player_two_workers, node.player_one)[1]) if \
+                environment.name == "Santorini" else (not environment.goal(node.state)[1]):
             node.expand(environment)
             node.evaluate(network, environment.name)
 
         else:
-            node.V = -environment.goal(node.state)[0]  # -> player_one 1, player_two -1
+            node.V = -environment.goal(node.state, node.player_one_workers, node.player_two_workers, node.player_one)[0] \
+                if environment.name == "Santorini" else -environment.goal(node.state)[0]# -> player_one 1, player_two -1
             # se la partita è finita, non è il turno di chi ha vinto -> -environment.goal(node.state)[0]
 
         # Backpropagation

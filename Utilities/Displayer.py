@@ -7,14 +7,15 @@ import pickle
 
 if __name__ == '__main__':
     sns.set(rc={'figure.figsize': (16, 9)})
-    algorithm = 'Magic'
-    environment = 'ConnectFour'
-    representation = 'Graphic'
-    opponent = 'MinMaxRandom'
+    algorithm = 'DDDQN'
+    environment = 'Santorini'
+    representation = 'Tabular'
+    opponent = 'Random'
     agent_turn = 'Random'
 
     config_name = algorithm + '_' + environment + '_' + representation + '_' + opponent + '_' + agent_turn
-    data_path = '../Results/' + config_name + '/scores.pkl'
+    #data_path = 'D:/FinalResultsD/' + config_name + '/scores.pkl'
+    data_path = '../RedoResults/' + config_name + '/scores.pkl'
     f = open(data_path, 'rb')
     results_random = pickle.load(f)
     f.close()
@@ -26,13 +27,13 @@ if __name__ == '__main__':
     data_random_length['rolling'] = data_random_length.length.rolling(100).mean()
 
     fig, ax = plt.subplots()
-    ax.set(ylim=(-2, 1))
+    ax.set(ylim=(-2, 1), xscale="log")
     ax = sns.lineplot(x='episode', y='reward', data=data_random_reward, label='random')
     ax = sns.lineplot(x='episode', y='rolling', data=data_random_reward, label='random_rolling')
     plt.show()
 
     fig, ax = plt.subplots()
-    ax.set(ylim=(0, 42))
+    ax.set(ylim=(0, 10))
     ax = sns.lineplot(x='episode', y='length', data=data_random_length, label='random')
     ax = sns.lineplot(x='episode', y='rolling', data=data_random_length, label='random_rolling')
     plt.show()

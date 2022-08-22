@@ -400,8 +400,8 @@ def get_agent(config_env, config_algorithm, config_network_dicts, config_network
 
 
 if __name__ == '__main__':
-    for config in itertools.product(*[['SAC'], ['TicTacToe', 'ConnectFour', 'Santorini'],
-                                      ['Tabular', 'Graphic'], ['Random']]):
+    for config in itertools.product(*[['DDDQN'], ['Santorini'],
+                                      ['Graphic'], ['Random']]):
         print('Executing the following config: {}'.format(config))
         algorithm = config[0]
         environment = config[1]
@@ -409,9 +409,9 @@ if __name__ == '__main__':
         opponent = config[3]
         agent_turn = 'Random'
         test_params = {
-            'num_episodes': 100000,
-            'learning_starts': 1000,
-            'memory_size': 32768,
+            'num_episodes': 20000,
+            'learning_starts': 5000,
+            'memory_size': 65536,
             'memory_alpha': 0.7,
             'memory_beta': 0.4,
             'max_epsilon': 1.0,
@@ -428,7 +428,7 @@ if __name__ == '__main__':
             continue
 
         config_name = algorithm + '_' + environment + '_' + representation + '_' + opponent + '_' + agent_turn
-        data_path = '..\\FinalResults\\' + config_name + '\\'
+        data_path = '..\\RedoResults\\' + config_name + '\\'
         gif_path = data_path + 'GIFs\\'
         network_path = data_path + 'NetworkParameters\\'
         os.mkdir(data_path)

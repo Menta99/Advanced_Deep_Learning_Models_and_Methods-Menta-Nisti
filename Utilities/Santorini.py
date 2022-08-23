@@ -39,7 +39,8 @@ HEIGHT = 160
 
 
 class SantoriniEnv(gym.Env):
-    def __init__(self, representation, agent_first, random_init=True, mcts=False, initial_simulations=0):
+    def __init__(self, representation, agent_first, random_init=True, mcts=False, initial_simulations=0,
+                 normal_simulations=0):
         self.name = "Santorini"
         self.representation = representation
         self.action_space = spaces.Discrete(ACTION_SPACE)
@@ -65,6 +66,7 @@ class SantoriniEnv(gym.Env):
         #self.reset()
         self.mcts = mcts
         self.initial_simulations = initial_simulations
+        self.normal_simulations = normal_simulations
         self.mc_node = MC_Tree(None, self.state, self.player_one_workers, self.player_two_workers, self.player_one)
         if mcts:
             for _ in tqdm(range(self.initial_simulations)):

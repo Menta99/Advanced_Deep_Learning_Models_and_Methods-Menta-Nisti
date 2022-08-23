@@ -3,9 +3,14 @@
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$">
       <excludeFolder url="file://$MODULE_DIR$/venv" />
+      <excludeFolder url="file://$MODULE_DIR$/Results" />
+      <excludeFolder url="file://$MODULE_DIR$/RedoResults" />
     </content>
     <content url="file://D:/FinalResultsD" />
     <orderEntry type="jdk" jdkName="Python 3.10 (Advanced_Deep_Learning_Models_and_Methods-Menta-Nisti)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
+  </component>
+  <component name="PackageRequirementsSettings">
+    <option name="versionSpecifier" value="Greater or equal (&gt;=x.y.z)" />
   </component>
 </module>

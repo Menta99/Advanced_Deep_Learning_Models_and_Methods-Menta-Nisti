@@ -13,7 +13,7 @@ from Utilities.Wrappers import OpponentWrapper
 class TurnGameTrainWizard:
     def __init__(self, environment, agent, objective_score, running_average_length, evaluation_steps,
                  evaluation_games, representation, agent_turn, agent_turn_test, opponent, data_path,
-                 gif_path, save_agent_checkpoints):
+                 gif_path, save_agent_checkpoints, montecarlo_init_sim=100000, montecarlo_normal_sim=25):
         self.agent = agent
         self.objective_score = objective_score
         self.running_average_length = running_average_length
@@ -27,6 +27,8 @@ class TurnGameTrainWizard:
         self.data_path = data_path
         self.gif_path = gif_path
         self.save_agent_checkpoints = save_agent_checkpoints
+        self.montecarlo_init_sim = montecarlo_init_sim
+        self.montecarlo_normal_sim = montecarlo_normal_sim
         self.episode_reward = 0
         self.episode_reward_history = [-np.inf for _ in range(running_average_length)]
         self.games_played = 0
@@ -45,7 +47,8 @@ class TurnGameTrainWizard:
         elif environment_name == 'ConnectFour':
             return OpponentWrapper(ConnectFourEnv(self.representation, agent_first), self.opponent)
         elif environment_name == 'Santorini':
-            return OpponentWrapper(SantoriniEnv(self.representation, agent_first), self.opponent)
+            return OpponentWrapper(SantoriniEnv(self.representation, agent_first, True, True, self.montecarlo_init_sim,
+                                                self.montecarlo_normal_sim), self.opponent)
         else:
             raise ValueError('Game provided does not exist!')
 
@@ -65,6 +68,7 @@ class TurnGameTrainWizard:
         state_init = state_next
         if done:
             self.episode_reward += reward
+            print('Game finished: steps {} reward {}'.format(self.agent.time_step, reward))
 
         self.agent.learn()
 
@@ -147,7 +151,8 @@ class TurnGameTrainWizard:
         elif self.environment.name == 'ConnectFour':
             test_env = ConnectFourEnv(self.environment.representation, agent_first)
         elif self.environment.name == 'Santorini':
-            test_env = SantoriniEnv(self.environment.representation, agent_first)
+            test_env = SantoriniEnv(self.environment.representation, agent_first, True, False, 0,
+                                    self.montecarlo_normal_sim)
         else:
             raise ValueError('Game provided does not exist!')
         test_env = OpponentWrapper(test_env, self.opponent)

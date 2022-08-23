@@ -37,7 +37,7 @@ class OpponentWrapper(gym.Wrapper):
                 if len(node.children) == 0:
                     node.expand(self.env)
                 node = self.env.mc_node.children[str(action)]
-            for _ in range(500): # SELECT RANGE
+            for _ in range(self.env.normal_simulations):
                 node.rollout_simulation(node.state, node.player_one_workers, node.player_two_workers,
                                         node.player_one, self.env, 4)
             action, node = node.best_move(self.env.agent_first)

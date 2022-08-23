@@ -142,16 +142,16 @@ class DDDQNAgent(Agent):
 
     def save(self):
         print('Saving models and parameters...')
-        f = open(os.path.join(self.checkpoint_dir, '_params'), "wb")
-        pickle.dump([self.memory, self.learn_step_counter, self.time_step], f)
-        f.close()
+        #f = open(os.path.join(self.checkpoint_dir, '_params'), "wb")
+        #pickle.dump([self.memory, self.learn_step_counter, self.time_step], f)
+        #f.close()
         self.q_net.save_weights(self.q_net.checkpoint_file)
         self.q_target_net.save_weights(self.q_target_net.checkpoint_file)
 
     def load(self):
         print('Loading models and parameters...')
-        f = open(os.path.join(self.checkpoint_dir, '_params'), "rb")
-        self.memory, self.learn_step_counter, self.time_step = pickle.load(f)
-        f.close()
+        #f = open(os.path.join(self.checkpoint_dir, '_params'), "rb")
+        #self.memory, self.learn_step_counter, self.time_step = pickle.load(f)
+        #f.close()
         self.q_net.load_weights(self.q_net.checkpoint_file)
         self.q_target_net.load_weights(self.q_target_net.checkpoint_file)

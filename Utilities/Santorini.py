@@ -10,8 +10,7 @@ import random
 from Utilities.MCTS import MC_Tree
 
 BOARD_SIZE = 5
-WIDTH = 160
-HEIGHT = 160
+
 ACTION_SPACE = 128  # np.array([2, 3, 3, 3, 3, 5, 5])
 ONE_REWARD = 1
 TWO_REWARD = -1
@@ -34,24 +33,27 @@ ACTIONS = {
     6: [-1, 0],
     7: [-1, 1]
 }
+WIDTH = 160
+HEIGHT = 160
 
 
 class SantoriniEnv(gym.Env):
     def __init__(self, representation, agent_first, random_init=True):
         self.name = "Santorini"
+        self.representation = representation
         self.action_space = spaces.Discrete(ACTION_SPACE)
-        if representation == "Tabular":
-            self.observation_space = spaces.Box(low=-1, high=1, shape=(BOARD_SIZE, BOARD_SIZE, len(LAYERS), 1), # LOW -1
-                                            dtype=np.int32)
-        elif representation == "Graphic":
-            self.observation_space = spaces.Box(low=-1, high=1, shape=(WIDTH, HEIGHT, 1), dtype=np.float32)
+        if self.representation == 'Tabular':
+            self.observation_space = spaces.Box(low=-1, high=1, shape=(BOARD_SIZE, BOARD_SIZE, len(LAYERS), 1),
+                                                # LOW -1
+                                                dtype=np.float32)
+        else:
+            self.observation_space = spaces.Box(low=0., high=1., shape=(HEIGHT, WIDTH, 1), dtype=np.float32)
         self.player_one = True
         self.turn = 0
         self.random_init = random_init
         self.state = np.zeros((BOARD_SIZE, BOARD_SIZE, len(LAYERS))).astype("int8")
         self.player_one_workers = [[], []]
         self.player_two_workers = [[], []]
-        self.representation = representation
         self.agent_first = agent_first
         assert self.representation in ['Tabular', 'Graphic']
         self.done = False
@@ -64,7 +66,6 @@ class SantoriniEnv(gym.Env):
         self.player_one = True
         self.turn = 0
         self.done = False
-        # if mc: for _ in range(1kk) mc_node.rollout_simulation
 
         if self.random_init:
             self.turn = 4
@@ -77,12 +78,13 @@ class SantoriniEnv(gym.Env):
         if self.representation == 'Tabular':
             return obs
         else:
-            return np.expand_dims(np.asarray(self.render_board(obs)), axis=-1)
+            return np.expand_dims(np.asarray(self.render_board(obs)), axis=-1) / 255.
 
     def get_fixed_obs(self):
         obs = np.expand_dims(self.state, axis=-1)
         if not self.agent_first:
-            obs = np.concatenate([obs[:, :, 0:4, :], obs[:, :, 5:6, :], obs[:, :, 4:5, :]], axis=-2) # FIX player on last 2 layers
+            obs = np.concatenate([obs[:, :, 0:4, :], obs[:, :, 5:6, :], obs[:, :, 4:5, :]],
+                                 axis=-2)  # FIX player on last 2 layers
         return obs
 
     def _assign_worker(self, player_num, action=None):
@@ -175,7 +177,8 @@ class SantoriniEnv(gym.Env):
 
         state_copy[coord_worker[0]][coord_worker[1]][LAYERS['player1'] + player_num] = 0
 
-        state_copy[coord_worker[0] + action[1]][coord_worker[1] + action[2]][LAYERS['player1'] + player_num] = 1 if action[0] == 0 else -1
+        state_copy[coord_worker[0] + action[1]][coord_worker[1] + action[2]][LAYERS['player1'] + player_num] = 1 if \
+        action[0] == 0 else -1
 
         if player_one:
             player_one_workers_copy[action[0]] = [coord_worker[0] + action[1], coord_worker[1] + action[2]]

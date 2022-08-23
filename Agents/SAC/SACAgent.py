@@ -186,9 +186,9 @@ class SACAgent(Agent):
 
     def save(self):
         print('Saving models and parameters...')
-        f = open(os.path.join(self.checkpoint_dir, '_params'), "wb")
-        pickle.dump([self.memory, self.learn_step_counter, self.time_step], f)
-        f.close()
+        #f = open(os.path.join(self.checkpoint_dir, '_params'), "wb")
+        #pickle.dump([self.memory, self.learn_step_counter, self.time_step], f)
+        #f.close()
         self.actor_net.save_weights(self.actor_net.checkpoint_file)
         self.local_critic_1_net.save_weights(self.local_critic_1_net.checkpoint_file)
         self.local_critic_2_net.save_weights(self.local_critic_2_net.checkpoint_file)
@@ -197,9 +197,9 @@ class SACAgent(Agent):
 
     def load(self):
         print('Loading models and parameters...')
-        f = open(os.path.join(self.checkpoint_dir, '_params'), "rb")
-        self.memory, self.learn_step_counter, self.time_step = pickle.load(f)
-        f.close()
+        #f = open(os.path.join(self.checkpoint_dir, '_params'), "rb")
+        #self.memory, self.learn_step_counter, self.time_step = pickle.load(f)
+        #f.close()
         self.actor_net.load_weights(self.actor_net.checkpoint_file)
         self.local_critic_1_net.load_weights(self.local_critic_1_net.checkpoint_file)
         self.local_critic_2_net.load_weights(self.local_critic_2_net.checkpoint_file)

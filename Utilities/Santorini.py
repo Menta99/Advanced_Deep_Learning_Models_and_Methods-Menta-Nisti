@@ -10,7 +10,8 @@ import random
 from Utilities.MCTS import MC_Tree
 
 BOARD_SIZE = 5
-
+WIDTH = 160
+HEIGHT = 160
 ACTION_SPACE = 128  # np.array([2, 3, 3, 3, 3, 5, 5])
 ONE_REWARD = 1
 TWO_REWARD = -1
@@ -39,8 +40,11 @@ class SantoriniEnv(gym.Env):
     def __init__(self, representation, agent_first, random_init=True):
         self.name = "Santorini"
         self.action_space = spaces.Discrete(ACTION_SPACE)
-        self.observation_space = spaces.Box(low=-1, high=1, shape=(BOARD_SIZE, BOARD_SIZE, len(LAYERS), 1), # LOW -1
+        if representation == "Tabular":
+            self.observation_space = spaces.Box(low=-1, high=1, shape=(BOARD_SIZE, BOARD_SIZE, len(LAYERS), 1), # LOW -1
                                             dtype=np.int32)
+        elif representation == "Graphic":
+            self.observation_space = spaces.Box(low=-1, high=1, shape=(WIDTH, HEIGHT, 1), dtype=np.float32)
         self.player_one = True
         self.turn = 0
         self.random_init = random_init
@@ -60,6 +64,7 @@ class SantoriniEnv(gym.Env):
         self.player_one = True
         self.turn = 0
         self.done = False
+        # if mc: for _ in range(1kk) mc_node.rollout_simulation
 
         if self.random_init:
             self.turn = 4
@@ -253,8 +258,7 @@ class SantoriniEnv(gym.Env):
         return 0, False, "game not end"
 
     def render_board(self, state):
-        w, h = 160, 160
-        image = Image.new('L', (w, h))
+        image = Image.new('L', (WIDTH, HEIGHT))
         draw = ImageDraw.Draw(image)
         for i in range(BOARD_SIZE):
             for j in range(BOARD_SIZE):

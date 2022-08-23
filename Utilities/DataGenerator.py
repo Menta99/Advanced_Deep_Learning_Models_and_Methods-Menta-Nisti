@@ -400,8 +400,8 @@ def get_agent(config_env, config_algorithm, config_network_dicts, config_network
 
 
 if __name__ == '__main__':
-    for config in itertools.product(*[['SAC'], ['TicTacToe', 'ConnectFour', 'Santorini'],
-                                      ['Tabular', 'Graphic'], ['Random']]):
+    for config in itertools.product(*[['DDDQN'], ['Santorini'],
+                                      ['Tabular'], ['MonteCarlo']]):
         print('Executing the following config: {}'.format(config))
         algorithm = config[0]
         environment = config[1]

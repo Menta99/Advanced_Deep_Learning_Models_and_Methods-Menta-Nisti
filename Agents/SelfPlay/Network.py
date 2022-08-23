@@ -8,13 +8,13 @@ class SelfPlayNetwork:
     def __init__(self, env, learning_rate):
         self.name = env.name
         if env.name == "Santorini":
-            self.observation_space = (5, 5, 6)
+            self.observation_space = (5, 5, 6) if env.representation == "Tabular" else (160, 160, 1)
             self.action_space = 128
         elif env.name == "TicTacToe":
-            self.observation_space = (3, 3, 1)
+            self.observation_space = (3, 3, 1) if env.representation == "Tabular" else (96, 96, 1)
             self.action_space = 9
         elif env.name == "ConnectFour":
-            self.observation_space = (6, 7, 1)
+            self.observation_space = (6, 7, 1) if env.representation == "Tabular" else (192, 224, 1)
             self.action_space = 7
         self.hidden_layers = [
             {'filters': 256, 'kernel_size': (3, 3)},
@@ -130,7 +130,7 @@ class SelfPlayNetwork:
         return x
 
     def predict(self, x):
-        return self.model.predict(x)
+        return self.model.predict(x=x, verbose=0)
 
     def fit(self, states, targets, epochs, verbose, validation_split, batch_size):
         return self.model.fit(states, targets, epochs=epochs, verbose=verbose, validation_split=validation_split,

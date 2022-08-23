@@ -1,6 +1,7 @@
 import copy
 import math
 import numpy as np
+import tensorflow as tf
 import random
 
 ACTIONS = {
@@ -182,22 +183,34 @@ class SelfPlayMCTS(MC_Tree):
             to_update.append(node)
 
         # Expansion
-        if (not environment.goal(node.state, node.player_one_workers, node.player_two_workers, node.player_one)[1]) if \
-                environment.name == "Santorini" else (not environment.goal(node.state)[1]):
-            node.expand(environment)
-            node.evaluate(network, environment.name)
-
+        if environment.name == "Santorini":
+            done = environment.goal(node.state, node.player_one_workers, node.player_two_workers, node.player_one)[1]
         else:
-            node.V = -environment.goal(node.state, node.player_one_workers, node.player_two_workers, node.player_one)[0] \
-                if environment.name == "Santorini" else -environment.goal(node.state)[0]# -> player_one 1, player_two -1
+            done = environment.goal(node.state)[1]
+
+        if not done:
+            node.expand(environment)
+            node.evaluate(network, environment)
+        else:
+            value = environment.goal(node.state, node.player_one_workers, node.player_two_workers, node.player_one)[0] \
+                if environment.name == "Santorini" else environment.goal(node.state)[0]
+            # -1 se vince il secondo, +1 se vince il primo
+            # player_one == True se primo False se secondo
+            node.V = value # -> player_one 1, player_two -1
             # se la partita è finita, non è il turno di chi ha vinto -> -environment.goal(node.state)[0]
 
         # Backpropagation
+        to_update.reverse()
+        value = node.V
         for n in to_update:
-            n.update(node.V, not node.player_one)
+            n.update(value)
+            value = -value
 
-    def evaluate(self, network, env_name):
-        predictions = network.predict(state_to_input_model(self.state, env_name))  # reshape for the network
+    def evaluate(self, network, env):
+        if env.representation == "Graphic":
+            predictions = network.predict(tf.expand_dims(tf.convert_to_tensor(env.render_board(self.get_relative_state(env.name, self.player_one))), axis = 0))
+        else:
+            predictions = network.predict(x=state_to_input_model(self.get_relative_state(env.name, self.player_one), env), verbose=0)  # reshape for the network
         value = predictions[0]
         prior_actions = predictions[1].squeeze()
         if self.is_root():
@@ -206,7 +219,7 @@ class SelfPlayMCTS(MC_Tree):
         self.V = value
 
         for i in range(len(prior_actions)):  # len(prior_actions) == # actions of the env
-            action = to_action(i, env_name)
+            action = to_action(i, env.name)
             if str(action) in self.children:
                 self.children[str(action)].P = prior_actions[i]
 
@@ -244,18 +257,10 @@ class SelfPlayMCTS(MC_Tree):
                 1 + node[1].N))
         # at = argmax(Q(st,a) + U(st,a)  where U(st, a) = Cpuct * P(s,a) * (sum(N(s,b))^0.5) / (1 + N(s,a))
 
-    # def sample_action(self):
-    #    weights = []
-    #    nodes = []
-    #    for child in self.children.items():
-    #        nodes.append(child)
-    #        weights.append(child[1].P)
-    #    return random.choices(nodes, weights=weights)#lambda node: node[1].P)
-
-    def update(self, value, winner):
-        v = value if self.player_one == winner else -value
+    def update(self, value):
+        #v = value if #self.player_one == winner else -value
         self.N += 1
-        self.W += v
+        self.W += value
         self.Q = self.W / self.N
 
 
@@ -271,10 +276,10 @@ def to_action(value, game):
         return [worker, movement[0], movement[1], build[0], build[1]]
 
 
-def state_to_input_model(state, name):
-    if name == "TicTacToe":
-        return state.reshape(-1, 3, 3, 1)
-    elif name == "ConnectFour":
-        return state.reshape(-1, 6, 7, 1)
-    elif name == "Santorini":
-        return state.reshape(-1, 5, 5, 6)
+def state_to_input_model(state, env):
+    if env.name == "TicTacToe":
+        return state.reshape(-1, 3, 3, 1) if env.representation == "Tabular" else state
+    elif env.name == "ConnectFour":
+        return state.reshape(-1, 6, 7, 1) if env.representation == "Tabular" else state
+    elif env.name == "Santorini":
+        return state.reshape(-1, 5, 5, 6) if env.representation == "Tabular" else state#.reshape(-1, 160, 160, 1)

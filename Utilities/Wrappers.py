@@ -5,7 +5,7 @@ from collections import deque
 import cv2
 import ast
 from Utilities.Santorini import ACTIONS
-from MCTS import MC_Tree
+from Utilities.MCTS import MC_Tree
 
 
 class OpponentWrapper(gym.Wrapper):

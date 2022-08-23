@@ -32,25 +32,17 @@ class OpponentWrapper(gym.Wrapper):
         elif self.agent_type == 'MinMaxRandom':
             return self.env.minmaxran(self.env.state)
         elif self.agent_type == 'MonteCarlo':
-            if action is None:
-                node = self.env.mc_node
-                for _ in range(500): # SELECT RANGE
-                    node.rollout_simulation(node.state, node.player_one_workers, node.player_two_workers,
-                                            node.player_one, self.env, 4)
-                action, node = node.best_move()
-                self.env.mc_node = node
-                return ast.literal_eval(action)
-            else:
-                node = self.env.mc_node
+            node = self.env.mc_node
+            if action is not None:
                 if len(node.children) == 0:
                     node.expand(self.env)
                 node = self.env.mc_node.children[str(action)]
-                for _ in range(500):
-                    node.rollout_simulation(node.state, node.player_one_workers, node.player_two_workers,
-                                            node.player_one, self.env, 4)
-                action, node = node.best_move()
-                self.env.mc_node = node
-                return ast.literal_eval(action)
+            for _ in range(500): # SELECT RANGE
+                node.rollout_simulation(node.state, node.player_one_workers, node.player_two_workers,
+                                        node.player_one, self.env, 4)
+            action, node = node.best_move(self.env.agent_first)
+            self.env.mc_node = node
+            return ast.literal_eval(action)
         else:
             raise ValueError('Opponent provided does not exist!')
 

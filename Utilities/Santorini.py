@@ -3,6 +3,7 @@ import gym
 from gym import spaces
 import numpy as np
 from PIL import Image, ImageDraw
+from tqdm import tqdm
 import math
 import copy
 import sys
@@ -38,7 +39,7 @@ HEIGHT = 160
 
 
 class SantoriniEnv(gym.Env):
-    def __init__(self, representation, agent_first, random_init=True):
+    def __init__(self, representation, agent_first, random_init=True, mcts=False, initial_simulations=0):
         self.name = "Santorini"
         self.representation = representation
         self.action_space = spaces.Discrete(ACTION_SPACE)
@@ -57,9 +58,18 @@ class SantoriniEnv(gym.Env):
         self.agent_first = agent_first
         assert self.representation in ['Tabular', 'Graphic']
         self.done = False
-        self.exploration_parameter = 1  # math.sqrt(2)
-        self.reset()
+        self.exploration_parameter = 10  # math.sqrt(2)
+        if self.random_init:
+            self.turn = 4
+            self._assign_worker(None)
+        #self.reset()
+        self.mcts = mcts
+        self.initial_simulations = initial_simulations
         self.mc_node = MC_Tree(None, self.state, self.player_one_workers, self.player_two_workers, self.player_one)
+        if mcts:
+            for _ in tqdm(range(self.initial_simulations)):
+                self.mc_node.rollout_simulation(self.state, self.player_one_workers, self.player_two_workers, self.player_one, self)
+        self.exploration_parameter = 1
 
     def reset(self):
         self.state = np.zeros((BOARD_SIZE, BOARD_SIZE, len(LAYERS))).astype("int8")
@@ -70,7 +80,9 @@ class SantoriniEnv(gym.Env):
         if self.random_init:
             self.turn = 4
             self._assign_worker(None)
-        self.mc_node = MC_Tree(None, self.state, self.player_one_workers, self.player_two_workers, self.player_one)
+        #self.mc_node = MC_Tree(None, self.state, self.player_one_workers, self.player_two_workers, self.player_one)
+        while not self.mc_node.is_root():
+            self.mc_node = self.mc_node.parent
         return self._get_observation()
 
     def _get_observation(self):

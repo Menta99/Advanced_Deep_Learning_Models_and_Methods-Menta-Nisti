@@ -151,6 +151,12 @@ class TurnGameTrainWizard:
         else:
             raise ValueError('Game provided does not exist!')
         test_env = OpponentWrapper(test_env, self.opponent)
+        if self.environment.name == "Santorini":
+            root = self.environment.mc_node
+            while not root.is_root():
+                root = root.parent
+            test_env.mc_node = root
+            test_env.mcts = True
         init_state = test_env.reset()
         return test_env, init_state
 

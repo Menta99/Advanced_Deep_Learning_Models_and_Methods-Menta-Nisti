@@ -1,4 +1,5 @@
 from tensorflow.keras.layers import Activation, BatchNormalization, Dense, Dropout, Flatten, Input, Conv2D, LeakyReLU, add
+from tensorflow.keras.initializers import HeNormal
 from keras.models import Sequential, load_model, Model
 import keras.backend as K
 from tensorflow.keras.optimizers import Adam
@@ -61,6 +62,7 @@ class SelfPlayNetwork:
             , kernel_size=kernel_size
             , padding='same'
             , activation='linear'
+            , kernel_initializer=HeNormal()
         )(x)
 
         x = BatchNormalization(axis=1)(x)
@@ -78,6 +80,7 @@ class SelfPlayNetwork:
             , kernel_size=kernel_size
             , padding='same'
             , activation='linear'
+            , kernel_initializer=HeNormal()
         )(x)
 
         x = BatchNormalization(axis=1)(x)
@@ -92,6 +95,7 @@ class SelfPlayNetwork:
             , kernel_size=(1, 1)
             , padding='same'
             , activation='linear'
+            , kernel_initializer=HeNormal()
         )(x)
 
         x = BatchNormalization(axis=1)(x)
@@ -99,11 +103,18 @@ class SelfPlayNetwork:
 
         x = Flatten()(x)
 
-        x = Dense(20, activation='linear')(x)
+        x = Dense(20
+                  , activation='linear'
+                  , kernel_initializer=HeNormal()
+                  )(x)
 
         x = LeakyReLU()(x)
 
-        x = Dense(1, activation='tanh', name='value_head')(x)
+        x = Dense(1
+                  , activation='tanh'
+                  , name='value_head'
+                  , kernel_initializer=HeNormal()
+                  )(x)
 
         return x
 
@@ -114,6 +125,7 @@ class SelfPlayNetwork:
             , kernel_size=(1, 1)
             , padding='same'
             , activation='linear'
+            , kernel_initializer=HeNormal()
         )(x)
 
         x = BatchNormalization(axis=1)(x)
@@ -125,6 +137,7 @@ class SelfPlayNetwork:
             self.action_space
             , activation='linear'
             , name='policy_head'
+            , kernel_initializer=HeNormal()
         )(x)
 
         return x

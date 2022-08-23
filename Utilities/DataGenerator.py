@@ -31,7 +31,7 @@ def get_env(config_environment, config_representation, config_turn, config_oppon
     elif config_environment == 'ConnectFour':
         return OpponentWrapper(ConnectFourEnv(config_representation, config_turn), config_opponent)
     elif config_environment == 'Santorini':
-        return OpponentWrapper(SantoriniEnv(config_representation, config_turn), config_opponent)
+        return OpponentWrapper(SantoriniEnv(config_representation, config_turn, True, True, 10000), config_opponent)
     else:
         raise ValueError('Game provided does not exist!')
 
@@ -401,7 +401,7 @@ def get_agent(config_env, config_algorithm, config_network_dicts, config_network
 
 if __name__ == '__main__':
     for config in itertools.product(*[['DDDQN'], ['Santorini'],
-                                      ['Graphic'], ['Random']]):
+                                      ['Graphic'], ['MonteCarlo']]):
         print('Executing the following config: {}'.format(config))
         algorithm = config[0]
         environment = config[1]
@@ -428,7 +428,7 @@ if __name__ == '__main__':
             continue
 
         config_name = algorithm + '_' + environment + '_' + representation + '_' + opponent + '_' + agent_turn
-        data_path = '..\\RedoResults\\' + config_name + '\\'
+        data_path = '..\\FinalResults\\' + config_name + '\\'
         gif_path = data_path + 'GIFs\\'
         network_path = data_path + 'NetworkParameters\\'
         os.mkdir(data_path)

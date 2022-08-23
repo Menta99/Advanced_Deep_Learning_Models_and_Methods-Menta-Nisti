@@ -64,9 +64,11 @@ class MC_Tree:
         return max(self.children.items(), key=lambda node: node[1].Q)
 
     # Select action and next node based only on exploitation (no exploration factor)
-    def best_move(self):
-        return max(self.children.items(),
-                   key=lambda node: node[1].W / node[1].N if node[1].N else 0)  # if number of simulations = 0 return 0
+    def best_move(self, agent_first=False):
+        if not agent_first:
+            return max(self.children.items(), key=lambda node: node[1].W / node[1].N if node[1].N else 0)
+        else:
+            return min(self.children.items(), key=lambda node: node[1].W / node[1].N if node[1].N else 0)
 
     def is_leaf(self):
         return len(self.children) == 0
@@ -131,9 +133,8 @@ class MC_Tree:
                         np.random.choice(len(actions))], player_one_workers, player_two_workers, player_one, 4)
                 else:
                     break
-            reward = player_one == environment.agent_first  # not player_one # True se vince 1 , False se vince 2 # Player_one è chi perde, siamo contenti se player_one è diverso
+            reward = player_one == environment.agent_first  # siamo contenti se player_one è agent_first
         # reward = environment.goal(state)[0] # 1 if player one wins else -1
-
         # Backpropagation
         for node in to_update:
             node.update(reward, environment.exploration_parameter)
@@ -208,14 +209,21 @@ class SelfPlayMCTS(MC_Tree):
 
     def evaluate(self, network, env):
         if env.representation == "Graphic":
-            predictions = network.predict(tf.expand_dims(tf.convert_to_tensor(env.render_board(self.get_relative_state(env.name, self.player_one))), axis = 0))
+            predictions = network.predict(x= tf.expand_dims(tf.convert_to_tensor(env.render_board(self.get_relative_state(env.name, self.player_one))), axis = 0), verbose = 0)
         else:
-            predictions = network.predict(x=state_to_input_model(self.get_relative_state(env.name, self.player_one), env), verbose=0)  # reshape for the network
+            predictions = network.predict(x=state_to_input_model(self.get_relative_state(env.name, self.player_one), env), verbose = 0)  # reshape for the network
         value = predictions[0]
         prior_actions = predictions[1].squeeze()
+        prior_actions[prior_actions<0] = 0
+        for i in range(len(prior_actions)):
+            action = to_action(i, env.name)
+            if str(action) not in self.children:
+                prior_actions[i] = 0
+        prior_actions = prior_actions / sum(prior_actions) if sum(prior_actions) !=0 else prior_actions
         if self.is_root():
             self.prior_actions = 0.75 * prior_actions + 0.25 * np.random.dirichlet([0.03] * len(prior_actions))
-        self.prior_actions = prior_actions
+        else:
+            self.prior_actions = prior_actions
         self.V = value
 
         for i in range(len(prior_actions)):  # len(prior_actions) == # actions of the env
@@ -263,6 +271,13 @@ class SelfPlayMCTS(MC_Tree):
         self.W += value
         self.Q = self.W / self.N
 
+    def get_probs(self, action_space, env):
+        pi = np.zeros(action_space)
+        for i in range(action_space):
+            action = to_action(i, env.name)
+            if str(action) in self.children:
+                pi[i] = self.children[str(action)].N
+        return pi / sum(pi)
 
 def to_action(value, game):
     if game == "TicTacToe":

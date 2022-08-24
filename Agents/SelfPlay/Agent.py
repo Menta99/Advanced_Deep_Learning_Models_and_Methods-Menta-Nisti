@@ -13,14 +13,17 @@ from Utilities.ConnectFour import ConnectFourEnv
 from Utilities.MCTS import to_action, state_to_input_model
 from multiprocessing import Pool
 from os import cpu_count
+import gc
+import sys
 import PIL.Image
 import math
 import random
 import copy
 import keras
 import numpy as np
+import time
 from tqdm import tqdm
-
+from Utilities.MCTS import drop_useless
 
 # CPU COUNT == 8
 # INSERISCI MONTECARLO SIMULAZIONI A RUNTIME ( ANCHE EVALUATION )
@@ -30,11 +33,11 @@ from Utilities.Wrappers import OpponentWrapper
 class SelfPlayAgent(Agent):
 
     def __init__(self, observation_space, action_space, learning_rate, episodes=1000, iterations=1000, test_games=16,
-                 win_perc=0.55,
-                 mini_batches=100, evaluation_steps=100, evaluation_games = 10,
-                 running_average_length = 100, gif_path = '', opponent = "Random",
-                 data_path = '',
-                 mcts_simulations=640, agent_turn_test = None,
+                 win_perc=0.55, tau=0,
+                 mini_batches=100, evaluation_steps=100, evaluation_games=10,
+                 running_average_length=100, gif_path='', opponent="Random",
+                 data_path='',
+                 mcts_simulations=640, agent_turn_test=None,
                  batch_size=32, checkpoint_dir='', multithreading=False):
         super(SelfPlayAgent, self).__init__(observation_space, action_space, batch_size, checkpoint_dir)
         self.learning_rate = learning_rate
@@ -42,6 +45,7 @@ class SelfPlayAgent(Agent):
         self.iterations = iterations
         self.test_games = test_games
         self.win_perc = win_perc
+        self.tau = tau
         self.mcts_simulations = mcts_simulations
         self.mini_batches = mini_batches
         self.evaluation_steps = evaluation_steps
@@ -59,22 +63,19 @@ class SelfPlayAgent(Agent):
         self.data_path = data_path
         self.opponent = opponent
 
-
     def learn(self, env):
         self.network = SelfPlayNetwork(env, self.learning_rate).model
         for i in range(self.iterations):
             print("iteration: ", i)
             if self.multithreading:
                 for j in range(math.ceil(self.episodes / self.cpu_count)):
-                    print("episode: ", j * self.cpu_count, (j + 1) * self.cpu_count)
                     with Pool(self.cpu_count) as p:
                         self.memory.extend(p.map(self.play_episode, [(env, self.network, self.mcts_simulations) for _ in
                                                                      range(self.cpu_count)]))
                         p.close()
             else:
                 for _ in tqdm(range(self.episodes)):
-                    #print("episode: ", j)
-                    self.memory.extend(self.play_episode(env, self.network, self.mcts_simulations))
+                    self.memory.extend(self.play_episode(env, self.network, self.mcts_simulations, self.tau))
 
             self.network.save('tmp/nnet/' + env.name)  # saves compiled state
             new_nnet = keras.models.load_model('tmp/nnet/' + env.name)
@@ -83,7 +84,8 @@ class SelfPlayAgent(Agent):
             if self.multithreading:
                 for _ in range(math.ceil(self.test_games / self.cpu_count)):
                     with Pool(self.cpu_count) as p:
-                        win_perc = p.map(self.compare_players, [(new_nnet, self.network, env) for _ in range(self.cpu_count)])
+                        win_perc = p.map(self.compare_players,
+                                         [(new_nnet, self.network, env) for _ in range(self.cpu_count)])
                         p.close()
                         win_perc = sum(win_perc) / len(win_perc)
             else:
@@ -95,9 +97,10 @@ class SelfPlayAgent(Agent):
             if win_perc > self.win_perc:
                 self.network = new_nnet
                 self.num_updates += 1
-
             if len(self.memory) > self.evaluation_steps * self.index:
                 self.test_agent(env)
+            del new_nnet
+            gc.collect()
         return self.network
 
     def act(self, observation, env):
@@ -105,10 +108,13 @@ class SelfPlayAgent(Agent):
         for _ in range(self.mcts_simulations):
             mcts.rollout_simulation(env, self.network)
         actions = mcts.get_probs(env.action_space.n, env)
-        action = np.where(actions == np.random.choice(actions, p=actions))
-        action = to_action(action[0][0], env.name)
-        #action, _ = mcts.select_next()
-        return action#ast.literal_eval(action)
+        del mcts
+        gc.collect()
+        action = np.argmax(actions)
+        # action = np.where(actions == np.random.choice(actions, p=actions))
+        action = to_action(action, env.name)
+        # action, _ = mcts.select_next()
+        return action  # ast.literal_eval(action)
 
     def store(self, initial_state, action, reward, final_state, terminal):
         pass
@@ -129,9 +135,11 @@ class SelfPlayAgent(Agent):
             for _ in range(self.mcts_simulations):
                 mcts.rollout_simulation(env, first)
             actions = mcts.get_probs(env.action_space.n, env)
-            action = np.where(actions == np.random.choice(actions, p=actions))
-            action = to_action(action[0][0], env.name)
-            mcts = mcts.children[str(action)]
+            action = np.argmax(actions)  # np.where(actions == np.random.choice(actions, p=actions))
+            action = to_action(action, env.name)
+            del mcts
+            gc.collect()
+            #mcts = mcts.children[str(action)]
             obs, reward, done, info = env.step(action)
             if done and challenger == first and reward == 1:  # challenger == first:  # conta il caso in cui la partita finisca per assenza di azioni
                 challenger_wins += 1
@@ -145,9 +153,11 @@ class SelfPlayAgent(Agent):
             for _ in range(self.mcts_simulations):
                 mcts.rollout_simulation(env, second)
             actions = mcts.get_probs(env.action_space.n, env)
-            action = np.where(actions == np.random.choice(actions, p=actions))
-            action = to_action(action[0][0], env.name)
-            mcts = mcts.children[str(action)]
+            action = np.argmax(actions)  # np.where(actions == np.random.choice(actions, p=actions))
+            action = to_action(action, env.name)
+            del mcts
+            gc.collect()
+            #mcts = mcts.children[str(action)]
             obs, reward, done, info = env.step(action)
             if done and challenger == second and reward == -1:  # challenger == second:
                 challenger_wins += 1
@@ -168,31 +178,47 @@ class SelfPlayAgent(Agent):
     #        action = np.argmax(actions)
     #    return to_action(action, env.name)
 
-    def play_episode(self, env, nnet, simulation_num=640):
+    def play_episode(self, env, nnet, simulation_num=640, tau=0):
         memories = []
         env.reset()
         mcts = get_mcts(env)
+        root = mcts
         turn = 0
         while True:
-            #print("turn N: ", turn)
+            # print("turn N: ", turn)
             for _ in range(simulation_num):
                 mcts.rollout_simulation(env, nnet)
-            memories.append([mcts.get_relative_state(env.name, turn % 2), mcts.get_probs(env.action_space.n, env), None])
+            memories.append(
+                [mcts.get_relative_state(env.name, turn % 2), mcts.get_probs(env.action_space.n, env), None])
             actions = mcts.get_probs(env.action_space.n, env)
-            action = np.where(actions == np.random.choice(actions, p=actions))
-            action = to_action(action[0][0], env.name)
+            if tau > 0:
+                action = np.where(actions == np.random.choice(actions, p=actions))[0][0]
+                tau = tau - 1
+            else:
+                action = np.argmax(actions)
+            action = to_action(action, env.name)
             mcts = mcts.children[str(action)]
-            # env.render_board(mcts.state).show()
-            mcts.parent = None  # drop the top part of the tree : Methods, Play
+            #mcts.parent.children.pop(str(action), None)
+            #drop_useless(mcts.parent)
+            #print(gc.collect())
+            mcts.parent.children = None
+            mcts.parent = None
             turn += 1
             if env.goal(mcts.state)[1]:  # if game over
                 memories = self.assign_reward(memories, env.goal(mcts.state)[0])  # turn+1%2 == winner
-                return memories
+                del mcts
+                del root
+                gc.collect()
+                break
             if env.name == "Santorini":
                 if len(env.actions(mcts.state, mcts.player_one_workers, mcts.player_two_workers,
                                    mcts.player_one)) == 0:  # Lost by no legal actions
                     memories = self.assign_reward(memories, not mcts.player_one)
-                    return memories
+                    del mcts
+                    del root
+                    gc.collect()
+                    break
+        return memories
 
     def assign_reward(self, memories, reward=None):
         if reward is not None and reward == 0:
@@ -311,34 +337,33 @@ def get_mcts(env):
     return mcts
 
 
-
 if __name__ == '__main__':
-
-    #config_name = algorithm + '_' + environment + '_' + representation + '_' + opponent + '_' + agent_turn
-    config_name = "PincoPallo"
+    # config_name = algorithm + '_' + environment + '_' + representation + '_' + opponent + '_' + agent_turn
+    config_name = "SelfPlay"
     data_path = '..\\..\\FinalResults\\' + config_name + '\\'
     gif_path = data_path + 'GIFs\\'
-    network_path = data_path + 'NetworkParameters\\' # Final Network
+    network_path = data_path + 'NetworkParameters\\'  # Final Network
     os.mkdir(data_path)
     os.mkdir(gif_path)
     os.mkdir(network_path)
 
     environment = TicTacToeEnv("Tabular", True)
-    agent = SelfPlayAgent(observation_space = environment.observation_space, action_space=environment.action_space, learning_rate=0.01, episodes=32, iterations=100, test_games=10,
-                 win_perc=0.55,
-                 mini_batches=128, evaluation_steps=150, evaluation_games = 10,
-                 running_average_length = 100, gif_path = gif_path, opponent = "MinMaxRandom",
-                 data_path = data_path,
-                 mcts_simulations=60, agent_turn_test = None,
-                 batch_size=16, checkpoint_dir=network_path, multithreading=False)
+    agent = SelfPlayAgent(observation_space=environment.observation_space, action_space=environment.action_space,
+                          learning_rate=0.01, episodes=32, iterations=30, test_games=10,
+                          win_perc=0.6, tau=3,
+                          mini_batches=64, evaluation_steps=150, evaluation_games=11,
+                          running_average_length=100, gif_path=gif_path, opponent="MinMaxRandom",
+                          data_path=data_path,
+                          mcts_simulations=40, agent_turn_test=None,
+                          batch_size=16, checkpoint_dir=network_path, multithreading=False)
     #agent.network = SelfPlayNetwork(environment, 0.01)
-    #agent.act(environment.state, environment)
+    #agent.compare_players(agent.network, agent.network, environment)
+    # agent.act(environment.state, environment)
     trained = agent.learn(environment)
-    trained.save('tmp/trained/'+ environment.name)
+    trained.save('tmp/trained/' + environment.name)
     # Counter:
     # step -> time-step self-play
     # number update network
-
 
 """
 if __name__ == '__main__':

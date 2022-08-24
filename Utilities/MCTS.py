@@ -1,8 +1,9 @@
-import copy
+from copy import copy
 import math
 import numpy as np
 import tensorflow as tf
 import random
+import gc
 
 ACTIONS = {
     0: [1, -1],
@@ -35,7 +36,7 @@ class MC_Tree:
             for action in actions:
                 if str(action) not in self.children:
                     state = environment.result(self.state, action)
-                    self.children[str(action)] = MC_Tree(state=state.copy(), parent=self)
+                    self.children[str(action)] = MC_Tree(state=copy(state), parent=self)
 
         # if environment.name == "ConnectFour":
         #    actions = environment.actions(self.state)
@@ -100,9 +101,9 @@ class MC_Tree:
             node.expand(environment)
 
             # Simulation
-        state = node.state.copy()
-        player_one_workers = node.player_one_workers.copy()
-        player_two_workers = node.player_two_workers.copy()
+        state = copy(node.state)
+        player_one_workers = copy(node.player_one_workers)
+        player_two_workers = copy(node.player_two_workers)
         player_one = node.player_one
 
         if environment.name == "TicTacToe":
@@ -257,7 +258,7 @@ class SelfPlayMCTS(MC_Tree):
                     state = environment.result(self.state, action)
                     self.children[str(action)] = SelfPlayMCTS(prior_action=None,
                                                               value=None,
-                                                              state=state.copy(),
+                                                              state=copy(state),
                                                               parent=self)
 
         if environment.name == "Santorini":
@@ -272,9 +273,9 @@ class SelfPlayMCTS(MC_Tree):
                                                                                                       4)
                     self.children[str(action)] = SelfPlayMCTS(prior_action=None,
                                                               value=None,
-                                                              state=state.copy(),
-                                                              player_one_workers=player_one_workers.copy(),
-                                                              player_two_workers=player_two_workers.copy(),
+                                                              state=copy(state),
+                                                              player_one_workers=copy(player_one_workers),
+                                                              player_two_workers=copy(player_two_workers),
                                                               player_one=player_one,
                                                               parent=self)
 
@@ -296,6 +297,16 @@ class SelfPlayMCTS(MC_Tree):
             if str(action) in self.children:
                 pi[i] = self.children[str(action)].N
         return pi / sum(pi)
+
+
+def drop_useless(root):
+    if len(root.children)==0:
+        del root
+        return
+    for node in root.children.values():
+        drop_useless(node)
+    root.children = {}
+
 
 def to_action(value, game):
     if game == "TicTacToe":

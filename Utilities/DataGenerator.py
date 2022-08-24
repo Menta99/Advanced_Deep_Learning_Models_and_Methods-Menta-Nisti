@@ -401,7 +401,7 @@ def get_agent(config_env, config_algorithm, config_network_dicts, config_network
 
 if __name__ == '__main__':
     for config in itertools.product(*[['DDDQN'], ['Santorini'],
-                                      ['Tabular'], ['MonteCarlo']]):
+                                      ['Tabular', 'Graphic'], ['MonteCarlo']]):
         print('Executing the following config: {}'.format(config))
         algorithm = config[0]
         environment = config[1]
@@ -409,7 +409,7 @@ if __name__ == '__main__':
         opponent = config[3]
         agent_turn = 'Random'
         test_params = {
-            'num_episodes': 100000,
+            'num_episodes': 200000,
             'learning_starts': 1000,
             'memory_size': 32768,
             'memory_alpha': 0.7,
@@ -444,8 +444,8 @@ if __name__ == '__main__':
                                      agent=agent,
                                      objective_score=1,
                                      running_average_length=100,
-                                     evaluation_steps=100,
-                                     evaluation_games=10,
+                                     evaluation_steps=200,
+                                     evaluation_games=5,
                                      representation=representation,
                                      agent_turn=turn,
                                      agent_turn_test=None,
@@ -454,7 +454,7 @@ if __name__ == '__main__':
                                      gif_path=gif_path,
                                      save_agent_checkpoints=False,
                                      montecarlo_init_sim=100000,
-                                     montecarlo_normal_sim=25)
+                                     montecarlo_normal_sim=10)
 
         wizard.train()
         wizard.agent.save()

@@ -42,6 +42,7 @@ class SantoriniEnv(gym.Env):
     def __init__(self, representation, agent_first, random_init=True, mcts=False, initial_simulations=0,
                  normal_simulations=0):
         self.name = "Santorini"
+        self.possible_actions = list(itertools.product(*[[0, 1], [-1, 0, 1], [-1, 0, 1], [-1, 0, 1], [-1, 0, 1]]))
         self.representation = representation
         self.action_space = spaces.Discrete(ACTION_SPACE)
         if self.representation == 'Tabular':
@@ -258,6 +259,13 @@ class SantoriniEnv(gym.Env):
             if self.check_valid_action(state, action, player_one_workers, player_two_workers, player_one):
                 actions.append(action)
         return actions
+
+    def get_random_action(self, state, player_one_workers, player_two_workers, player_one):
+        np.random.shuffle(self.possible_actions)
+        for a in self.possible_actions:
+            if self.check_valid_action(state, a, player_one_workers, player_two_workers, player_one):
+                return a
+        return None
 
     # Checks whether a final state is reached
     def goal(self, state, player_one_workers, player_two_workers, player_one):

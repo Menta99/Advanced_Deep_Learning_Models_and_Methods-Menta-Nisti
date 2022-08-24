@@ -17,6 +17,7 @@ HEIGHT = 192
 class ConnectFourEnv(gym.Env):
     def __init__(self, representation, agent_first):
         self.name = "ConnectFour"
+        self.possible_actions = list(range(7))
         self.representation = representation
         self.agent_first = agent_first
         assert self.representation in ['Tabular', 'Graphic'] and self.agent_first in [True, False, None]
@@ -80,6 +81,13 @@ class ConnectFourEnv(gym.Env):
     # Returns all possible actions given the state
     def actions(self, state):
         return [col for col in range(COLUMNS) if self.check_valid_action(state, col)]
+
+    def get_random_action(self, state):
+        np.random.shuffle(self.possible_actions)
+        for a in self.possible_actions:
+            if self.check_valid_action(state, a):
+                return a
+        return None
 
     # Checks whether a final state is reached
     def goal(self, state):

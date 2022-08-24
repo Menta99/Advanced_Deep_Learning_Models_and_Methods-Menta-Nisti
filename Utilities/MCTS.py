@@ -107,32 +107,50 @@ class MC_Tree:
 
         if environment.name == "TicTacToe":
             while not environment.goal(state)[1]:
-                actions = environment.actions(state)
-                if len(actions) > 0:
-                    state = environment.result(state, actions[np.random.choice(len(actions))])
+                action = environment.get_random_action(state)
+                if action is not None:
+                    state = environment.result(state)
                 else:
                     break
+                # actions = environment.actions(state)
+                # if len(actions) > 0:
+                #     state = environment.result(state, actions[np.random.choice(len(actions))])
+                # else:
+                #     break
             player_one = (1 if np.count_nonzero(state == 1) == np.count_nonzero(state == -1) else -1) == 1
             reward = player_one == environment.agent_first
 
         if environment.name == "ConnectFour":
             while not environment.goal(state)[1]:
-                actions = environment.actions(state)
-                if len(actions) > 0:
+                action = environment.get_random_action(state)
+                if action is not None:
                     state = environment.result(state)
                 else:
                     break
+                # actions = environment.actions(state)
+                # if len(actions) > 0:
+                #     state = environment.result(state)
+                # else:
+                #     break
             player_one = (1 if np.count_nonzero(state == 1) == np.count_nonzero(state == -1) else -1) == 1
             reward = player_one == environment.agent_first
 
         if environment.name == "Santorini":
             while not environment.goal(state, player_one_workers, player_two_workers, player_one)[1]:
-                actions = environment.actions(state, player_one_workers, player_two_workers, player_one)
-                if len(actions) > 0:
-                    state, player_one_workers, player_two_workers, player_one, _ = environment.result(state, actions[
-                        np.random.choice(len(actions))], player_one_workers, player_two_workers, player_one, 4)
+                action = environment.get_random_action(state, player_one_workers, player_two_workers, player_one)
+                if action is not None:
+                    state, player_one_workers, \
+                    player_two_workers, player_one, _ = environment.result(state, action,
+                                                                           player_one_workers, player_two_workers,
+                                                                           player_one, 4)
                 else:
                     break
+                # actions = environment.actions(state, player_one_workers, player_two_workers, player_one)
+                # if len(actions) > 0:
+                #     state, player_one_workers, player_two_workers, player_one, _ = environment.result(state, actions[
+                #         np.random.choice(len(actions))], player_one_workers, player_two_workers, player_one, 4)
+                # else:
+                #     break
             reward = player_one == environment.agent_first  # siamo contenti se player_one è agent_first
         # reward = environment.goal(state)[0] # 1 if player one wins else -1
         # Backpropagation

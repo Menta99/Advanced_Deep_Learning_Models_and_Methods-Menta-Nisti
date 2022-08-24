@@ -17,6 +17,7 @@ HEIGHT = 96
 class TicTacToeEnv(gym.Env):
     def __init__(self, representation, agent_first):
         self.name = "TicTacToe"
+        self.possible_actions = list(range(9))
         self.representation = representation
         self.agent_first = agent_first
         assert self.representation in ['Tabular', 'Graphic'] and self.agent_first in [True, False, None]
@@ -73,6 +74,13 @@ class TicTacToeEnv(gym.Env):
     # Returns all possible actions given the state
     def actions(self, state):
         return [i for i in range(9) if state[i // 3][i % 3] == 0]
+
+    def get_random_action(self, state):
+        np.random.shuffle(self.possible_actions)
+        for a in self.possible_actions:
+            if state[a // 3][a % 3] == 0:
+                return a
+        return None
 
     # Checks wheter a final state is reached
     def goal(self, state):

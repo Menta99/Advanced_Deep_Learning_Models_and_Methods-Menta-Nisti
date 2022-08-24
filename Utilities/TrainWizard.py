@@ -68,7 +68,7 @@ class TurnGameTrainWizard:
         state_init = state_next
         if done:
             self.episode_reward += reward
-            print('Game finished: steps {} reward {}'.format(self.agent.time_step, reward))
+            #print('Game finished: steps {} reward {}'.format(self.agent.time_step, reward))
 
         self.agent.learn()
 

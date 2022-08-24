@@ -25,8 +25,11 @@ class OpponentWrapper(gym.Wrapper):
 
     def get_opponent_action(self, action=None):
         if self.agent_type == 'Random':
-            valid_actions = self.env.actions(self.env.state, self.env.player_one_workers, self.env.player_two_workers, self.env.player_one) if self.env.name=="Santorini" else self.env.actions(self.env.state)
-            return valid_actions[np.random.randint(0, len(valid_actions))]
+            if self.env.name == 'Santorini':
+                return self.env.get_random_action(self.env.state, self.env.player_one_workers,
+                                                  self.env.player_two_workers, self.env.player_one)
+            else:
+                return self.env.get_random_action(self.env.state)
         elif self.agent_type == 'MinMax':
             return self.env.minmax(self.env.state)
         elif self.agent_type == 'MinMaxRandom':

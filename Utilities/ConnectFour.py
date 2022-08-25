@@ -63,7 +63,7 @@ class ConnectFourEnv(gym.Env):
         if not self.check_valid_action(self.state, action):
             invalidAction = True
         if invalidAction:
-            reward = -2 * self._get_mark(self.state)
+            reward = -2 * self.get_mark(self.state)
             if not self.agent_first:
                 reward = -reward
             return self._get_observation(), reward, True, 'invalid_action_error'
@@ -92,7 +92,7 @@ class ConnectFourEnv(gym.Env):
     # Checks whether a final state is reached
     def goal(self, state):
         if self._check_diagonal(state) or self._check_horizontal(state) or self._check_vertical(state):
-            if self._get_mark(state) == -1:
+            if self.get_mark(state) == -1:
                 return X_REWARD, True, "X won"
             else:
                 return O_REWARD, True, "O won"
@@ -113,7 +113,7 @@ class ConnectFourEnv(gym.Env):
         return state
 
     # Gets current player/symbol by looking at the state of the game (Implicitly 'X' is the first player)
-    def _get_mark(self, state):
+    def get_mark(self, state):
         return 1 if np.count_nonzero(state == 1) == np.count_nonzero(state == -1) else -1
 
     # Checks winning conditions -> 4 of the same symbol in a row, a column or diagonally
@@ -149,7 +149,7 @@ class ConnectFourEnv(gym.Env):
         if self.goal(state)[1]:
             return None
         else:
-            if self._get_mark(state) == 1:
+            if self.get_mark(state) == 1:
                 value, move = self.max_value(state, alpha, beta, depth)
                 return move
             else:
@@ -200,7 +200,7 @@ class ConnectFourEnv(gym.Env):
         if self.goal(state)[1]:
             return None
         else:
-            if self._get_mark(state) == 1:
+            if self.get_mark(state) == 1:
                 value, moves = self.max_value_ran(state, depth, True)
                 return np.random.choice(moves)
             else:

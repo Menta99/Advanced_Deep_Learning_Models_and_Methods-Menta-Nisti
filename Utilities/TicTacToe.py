@@ -59,12 +59,12 @@ class TicTacToeEnv(gym.Env):
         if self.state[action // 3][action % 3] != 0:
             invalidAction = True
         if invalidAction:
-            reward = -2 * self._get_mark(self.state)
+            reward = -2 * self.get_mark(self.state)
             if not self.agent_first:
                 reward = -reward
             return self._get_observation(), reward, True, 'invalid_action_error'
         else:
-            self.state[action // 3][action % 3] = self._get_mark(self.state)
+            self.state[action // 3][action % 3] = self.get_mark(self.state)
         self.turn += 1
         a, b, c = self.goal(self.state)
         if not self.agent_first:
@@ -85,7 +85,7 @@ class TicTacToeEnv(gym.Env):
     # Checks wheter a final state is reached
     def goal(self, state):
         if self._check_diagonal(state) or self._check_horizontal(state) or self._check_vertical(state):
-            if self._get_mark(state) == -1:
+            if self.get_mark(state) == -1:
                 return X_REWARD, True, "X won"
             else:
                 return O_REWARD, True, "O won"
@@ -100,7 +100,7 @@ class TicTacToeEnv(gym.Env):
         state_copy[action // 3][action % 3] = 1 if np.count_nonzero(state_copy == 1) == np.count_nonzero(state_copy == -1) else -1#self._get_mark()
         return state_copy
 
-    def _get_mark(self, state):
+    def get_mark(self, state):
         return 1 if np.count_nonzero(state == 1) == np.count_nonzero(state == -1) else -1
 
     def _check_horizontal(self, state):
@@ -120,7 +120,7 @@ class TicTacToeEnv(gym.Env):
         if self.goal(state)[1]:
             return None
         else:
-            if self._get_mark(state) == 1:
+            if self.get_mark(state) == 1:
                 value, move = self.max_value(state, alpha, beta)
                 return move
             else:
@@ -133,7 +133,7 @@ class TicTacToeEnv(gym.Env):
         v = float('-inf')
         move = None
         for action in self.actions(state):
-            state[action // 3][action % 3] = self._get_mark(state)
+            state[action // 3][action % 3] = self.get_mark(state)
             # v = max(v, min_v(next_state))
             aux, act = self.min_value(state, alpha, beta)
             if aux > v:
@@ -151,7 +151,7 @@ class TicTacToeEnv(gym.Env):
         v = float('inf')
         move = None
         for action in self.actions(state):
-            state[action // 3][action % 3] = self._get_mark(state)
+            state[action // 3][action % 3] = self.get_mark(state)
             # v = max(v, min_v(next_state))
             aux, act = self.max_value(state, alpha, beta)
             if aux < v:

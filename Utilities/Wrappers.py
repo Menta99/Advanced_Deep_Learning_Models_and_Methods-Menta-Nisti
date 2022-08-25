@@ -14,13 +14,18 @@ class OpponentWrapper(gym.Wrapper):
         self.agent_type = agent_type
         assert agent_type in ['Random', 'MinMax', 'MinMaxRandom', 'MonteCarlo'], 'Select a valid opponent'
 
-    def step(self, action):
+    def step(self, action, selfplay=False):
         action = to_action(action, self.env.name)
         obs, reward, done, info = self.env.step(action)
         render = self.env.render_board(self.env.get_fixed_obs())
         if done:
+            if selfplay:
+                return obs, reward, done, {'info': info}, render, None
             return obs, reward, done, {'info': info}, render
-        obs_adv, reward_adv, done_adv, info_adv = self.env.step(self.get_opponent_action(action))
+        action_opponent = self.get_opponent_action(action)
+        obs_adv, reward_adv, done_adv, info_adv = self.env.step(action_opponent)
+        if selfplay:
+            return obs_adv, reward_adv, done_adv, {'info': info_adv}, render, action_opponent
         return obs_adv, reward_adv, done_adv, {'info': info_adv}, render
 
     def get_opponent_action(self, action=None):
@@ -49,10 +54,13 @@ class OpponentWrapper(gym.Wrapper):
         else:
             raise ValueError('Opponent provided does not exist!')
 
-    def reset(self, **kwargs):
+    def reset(self, selfplay=False, **kwargs):
         obs = self.env.reset(**kwargs)
         if not self.env.agent_first:
-            obs, _, _, _ = self.env.step(self.get_opponent_action())
+            opponent_action = self.get_opponent_action()
+            obs, _, _, _ = self.env.step(opponent_action)
+            if selfplay:
+                return obs, opponent_action
         return obs
 
 

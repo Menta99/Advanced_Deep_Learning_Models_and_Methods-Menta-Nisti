@@ -1,6 +1,7 @@
 from tensorflow.keras.layers import Activation, BatchNormalization, Dense, Dropout, Flatten, Input, Conv2D, LeakyReLU, add
 from tensorflow.keras.initializers import HeNormal
 from keras.models import Sequential, load_model, Model
+from keras import regularizers
 import keras.backend as K
 from tensorflow.keras.optimizers import Adam
 
@@ -15,7 +16,7 @@ class SelfPlayNetwork:
             self.observation_space = (3, 3, 1) if env.representation == "Tabular" else (96, 96, 1)
             self.action_space = 9
         elif env.name == "ConnectFour":
-            self.observation_space = (6, 7, 1) if env.representation == "Tabular" else (192, 224, 1)
+            self.observation_space = (7, 6, 1) if env.representation == "Tabular" else (192, 224, 1)
             self.action_space = 7
         self.hidden_layers = [
             {'filters': 256, 'kernel_size': (3, 3)},
@@ -63,6 +64,7 @@ class SelfPlayNetwork:
             , padding='same'
             , activation='linear'
             , kernel_initializer=HeNormal()
+            , kernel_regularizer=regularizers.l2(0.001)
         )(x)
 
         x = BatchNormalization(axis=1)(x)
@@ -81,6 +83,7 @@ class SelfPlayNetwork:
             , padding='same'
             , activation='linear'
             , kernel_initializer=HeNormal()
+            , kernel_regularizer=regularizers.l2(0.001)
         )(x)
 
         x = BatchNormalization(axis=1)(x)
@@ -96,6 +99,7 @@ class SelfPlayNetwork:
             , padding='same'
             , activation='linear'
             , kernel_initializer=HeNormal()
+            , kernel_regularizer=regularizers.l2(0.001)
         )(x)
 
         x = BatchNormalization(axis=1)(x)
@@ -106,6 +110,7 @@ class SelfPlayNetwork:
         x = Dense(20
                   , activation='linear'
                   , kernel_initializer=HeNormal()
+                  , kernel_regularizer=regularizers.l2(0.001)
                   )(x)
 
         x = LeakyReLU()(x)
@@ -114,6 +119,7 @@ class SelfPlayNetwork:
                   , activation='tanh'
                   , name='value_head'
                   , kernel_initializer=HeNormal()
+                  , kernel_regularizer=regularizers.l2(0.001)
                   )(x)
 
         return x
@@ -126,6 +132,7 @@ class SelfPlayNetwork:
             , padding='same'
             , activation='linear'
             , kernel_initializer=HeNormal()
+            , kernel_regularizer=regularizers.l2(0.001)
         )(x)
 
         x = BatchNormalization(axis=1)(x)
@@ -138,12 +145,13 @@ class SelfPlayNetwork:
             , activation='linear'
             , name='policy_head'
             , kernel_initializer=HeNormal()
+            , kernel_regularizer=regularizers.l2(0.001)
         )(x)
 
         return x
 
     def predict(self, x):
-        return self.model.predict(x=x, verbose=0)
+        return self.model(x)#.predict(x=x, verbose=0)
 
     def fit(self, states, targets, epochs, verbose, validation_split, batch_size):
         return self.model.fit(states, targets, epochs=epochs, verbose=verbose, validation_split=validation_split,

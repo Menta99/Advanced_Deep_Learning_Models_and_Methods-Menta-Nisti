@@ -100,6 +100,9 @@ class SelfPlayAgent(Agent):
                 print("Updated Network", flush=True)
                 self.network = new_nnet
                 self.num_updates += 1
+                f = open(os.path.join(self.checkpoint_dir, 'memory'), "wb")
+                pickle.dump([self.memory, self.iterations-i, self.time_step], f)
+                f.close()
             if self.time_step > self.evaluation_steps * self.index:
                 self.test_agent(env)
         return self.network

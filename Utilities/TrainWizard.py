@@ -1,3 +1,4 @@
+import gc
 import pickle
 
 import numpy as np
@@ -11,9 +12,10 @@ from Utilities.Wrappers import OpponentWrapper
 
 
 class TurnGameTrainWizard:
-    def __init__(self, environment, agent, objective_score, running_average_length, evaluation_steps,
+    def __init__(self, environment_name, agent, objective_score, running_average_length, evaluation_steps,
                  evaluation_games, representation, agent_turn, agent_turn_test, opponent, data_path,
                  gif_path, save_agent_checkpoints, montecarlo_init_sim=100000, montecarlo_normal_sim=25):
+        self.environment_name = environment_name
         self.agent = agent
         self.objective_score = objective_score
         self.running_average_length = running_average_length
@@ -36,7 +38,7 @@ class TurnGameTrainWizard:
         self.rewards_sample = None
         self.frame_count = 0
         self.index = 1
-        self.environment = self.build_env(environment)
+        self.environment = self.build_env(environment_name)
 
     def build_env(self, environment_name):
         agent_first = self.agent_turn
@@ -131,6 +133,14 @@ class TurnGameTrainWizard:
 
                 if self.frame_count > self.evaluation_steps * self.index:
                     self.test_agent()
+                    if self.environment.name == 'Santorini' and self.index % 25 == 0:
+                        try:
+                            del self.environment
+                            gc.collect()
+                            del self.environment
+                        except:
+                            gc.collect()
+                            self.environment = self.build_env(self.environment_name)
 
             if self.update_stats():
                 break

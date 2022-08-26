@@ -11,7 +11,6 @@ from Utilities.Santorini import SantoriniEnv
 from Utilities.TicTacToe import TicTacToeEnv
 from Utilities.ConnectFour import ConnectFourEnv
 from Utilities.MCTS import to_action, state_to_input_model
-#from multiprocessing import Pool
 from os import cpu_count
 import gc
 import sys
@@ -23,9 +22,6 @@ import keras
 import numpy as np
 import time
 from tqdm import tqdm
-
-# CPU COUNT == 8
-# INSERISCI MONTECARLO SIMULAZIONI A RUNTIME ( ANCHE EVALUATION )
 from Utilities.Wrappers import OpponentWrapper
 
 
@@ -37,7 +33,8 @@ class SelfPlayAgent(Agent):
                  running_average_length=100, gif_path='', opponent="Random",
                  data_path='', memory_size = 2048,
                  mcts_simulations=640, agent_turn_test=None,
-                 batch_size=32, checkpoint_dir='', multithreading=False):
+                 batch_size=32, checkpoint_dir='', multithreading=False,
+                 tmp_path = "tmp/nnet"):
         super(SelfPlayAgent, self).__init__(observation_space, action_space, batch_size, checkpoint_dir)
         self.learning_rate = learning_rate
         self.episodes = episodes
@@ -62,6 +59,7 @@ class SelfPlayAgent(Agent):
         self.agent_turn_test = agent_turn_test
         self.gif_path = gif_path
         self.data_path = data_path
+        self.tmp_path = tmp_path
         self.opponent = opponent
 
     def learn(self, env):
@@ -80,8 +78,8 @@ class SelfPlayAgent(Agent):
                     while len(self.memory) > self.memory_size:
                         self.memory.pop(0)
 
-            self.network.save('tmp/nnet/' + env.name)  # saves compiled state
-            new_nnet = keras.models.load_model('tmp/nnet/' + env.name)
+            self.network.save(self.tmp_path)  # saves compiled state
+            new_nnet = keras.models.load_model(self.tmp_path)
             new_nnet = self.train_nnet(new_nnet, self.memory)  # Create copy of nnet with same weights as nnet
 
             if self.multithreading:
@@ -211,21 +209,25 @@ class SelfPlayAgent(Agent):
             mcts.parent.children = None
             mcts.parent = None
             turn += 1
-            if env.goal(mcts.state)[1]:  # if game over
-                memories = self.assign_reward(memories, env.goal(mcts.state)[0])  # turn+1%2 == winner
-                break
+            if env.name == "TicTacToe" or env.name == "ConnectFour":
+                if env.goal(mcts.state)[1]:  # if game over
+                    memories = self.assign_reward(memories, env.goal(mcts.state)[0])  # turn+1%2 == winner
+                    break
             if env.name == "Santorini":
-                if len(env.actions(mcts.state, mcts.player_one_workers, mcts.player_two_workers,
-                                   mcts.player_one)) == 0:  # Lost by no legal actions
-                    memories = self.assign_reward(memories, not mcts.player_one)
+                if env.goal(mcts.state, mcts.player_one_workers, mcts.player_two_workers, mcts.player_one)[1]:
+                #if len(env.actions(mcts.state, mcts.player_one_workers, mcts.player_two_workers,
+                #                   mcts.player_one)) == 0:  # Lost by no legal actions
+                    memories = self.assign_reward(memories, env.goal(mcts.state, mcts.player_one_workers, mcts.player_two_workers, mcts.player_one)[0])
                     break
         return memories
 
     def assign_reward(self, memories, reward=None):
+        memories.reverse()
         if reward is not None and reward == 0:
             for memory in memories:
                 memory[2] = 0
         else:
+            reward = -reward # Reward -1
             for memory in memories:
                 memory[2] = reward  # 1 if winner == 0 else -1
                 reward = -reward
@@ -359,12 +361,15 @@ def get_mcts(env):
 
 
 if __name__ == '__main__':
+
     # config_name = algorithm + '_' + environment + '_' + representation + '_' + opponent + '_' + agent_turn
     config_name = "SelfPlay\\TicTacToe"
     data_path = '..\\..\\FinalResults\\' + config_name + '\\'
     gif_path = data_path + 'GIFs\\'
     network_path = data_path + 'NetworkParameters\\'  # Final Network
+    tmp_path = data_path + "tmp\\"
     os.mkdir(data_path)
+    os.mkdir(tmp_path)
     os.mkdir(gif_path)
     os.mkdir(network_path)
 
@@ -372,18 +377,16 @@ if __name__ == '__main__':
     agent = SelfPlayAgent(observation_space=environment.observation_space, action_space=environment.action_space,
                           learning_rate=0.01, episodes=64, iterations=50, test_games=11,
                           win_perc=0.55, tau=4, memory_size=10000,
-                          mini_batches=64, evaluation_steps=1, evaluation_games=10,
+                          mini_batches=96, evaluation_steps=1, evaluation_games=10,
                           running_average_length=100, gif_path=gif_path, opponent="MinMaxRandom",
                           data_path=data_path,
                           mcts_simulations=50, agent_turn_test=None,
-                          batch_size=32, checkpoint_dir=network_path, multithreading=False)
+                          batch_size=32, checkpoint_dir=network_path, multithreading=False,
+                          tmp_path=tmp_path)
     trained = agent.learn(environment)
-    trained.save('tmp/trained/' + environment.name)
-"""
-    del agent
-    del trained
-    gc.collect()
+    trained.save(network_path)
 
+"""
     config_name = "SelfPlay\\ConnectFour"
     data_path = '..\\..\\FinalResults\\' + config_name + '\\'
     gif_path = data_path + 'GIFs\\'
@@ -394,13 +397,13 @@ if __name__ == '__main__':
 
     environment = ConnectFourEnv("Tabular", True)
     agent = SelfPlayAgent(observation_space=environment.observation_space, action_space=environment.action_space,
-                          learning_rate=0.01, episodes=32, iterations=50, test_games=11,
-                          win_perc=0.55, tau=3, memory_size=3062,
-                          mini_batches=128, evaluation_steps=150, evaluation_games=10,
+                          learning_rate=0.01, episodes=16, iterations=60, test_games=11,
+                          win_perc=0.55, tau=7, memory_size=18000,
+                          mini_batches=256, evaluation_steps=1, evaluation_games=10,
                           running_average_length=100, gif_path=gif_path, opponent="MinMaxRandom",
                           data_path=data_path,
-                          mcts_simulations=50, agent_turn_test=None,
-                          batch_size=16, checkpoint_dir=network_path, multithreading=False)
+                          mcts_simulations=60, agent_turn_test=None,
+                          batch_size=32, checkpoint_dir=network_path, multithreading=False)
     trained = agent.learn(environment)
     trained.save('tmp/trained/' + environment.name)
 """

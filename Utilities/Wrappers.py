@@ -359,6 +359,8 @@ def to_action(value, game):
     elif game == "ConnectFour":
         return value
     elif game == "Santorini":
+        if type(value) == list:
+            return value
         worker = value // 64
         movement = ACTIONS[(value % 64) // 8]
         build = ACTIONS[(value % 64) % 8]

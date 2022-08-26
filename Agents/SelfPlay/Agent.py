@@ -53,6 +53,7 @@ class SelfPlayAgent(Agent):
         self.num_updates = 0
         self.cpu_count = cpu_count()
         self.network = None
+        self.challenger = None
         self.eval_reward_history = {}
         self.time_step = 0
         self.running_average_length = running_average_length
@@ -64,6 +65,8 @@ class SelfPlayAgent(Agent):
 
     def learn(self, env):
         self.network = SelfPlayNetwork(env, self.learning_rate).model
+        self.network.save(self.tmp_path)  # saves compiled state
+        self.challenger = keras.models.load_model(self.tmp_path)
         for i in range(self.iterations):
             print("iteration: ", i)
             if self.multithreading:
@@ -78,9 +81,9 @@ class SelfPlayAgent(Agent):
                     while len(self.memory) > self.memory_size:
                         self.memory.pop(0)
 
-            self.network.save(self.tmp_path)  # saves compiled state
-            new_nnet = keras.models.load_model(self.tmp_path)
-            new_nnet = self.train_nnet(new_nnet, self.memory)  # Create copy of nnet with same weights as nnet
+            #self.network.save(self.tmp_path)  # saves compiled state
+            #new_nnet = keras.models.load_model(self.tmp_path)
+            self.challenger = self.train_nnet(self.challenger, self.memory)  # Create copy of nnet with same weights as nnet
 
             if self.multithreading:
                 for _ in range(math.ceil(self.test_games / self.cpu_count)):
@@ -93,12 +96,13 @@ class SelfPlayAgent(Agent):
                 win_perc = 0
                 print("Comparing Networks ...", flush=True)
                 for _ in tqdm(range(self.test_games)):
-                    win_perc += self.compare_players(new_nnet, self.network, env)
+                    win_perc += self.compare_players(self.challenger, self.network, env)
                 win_perc = ((win_perc / self.test_games) + 1)/2
 
             if win_perc > self.win_perc:
                 print("Updated Network", flush=True)
-                self.network = new_nnet
+                self.challenger.save(self.tmp_path)
+                self.network = keras.models.load_model(self.tmp_path)
                 self.num_updates += 1
                 f = open(os.path.join(self.checkpoint_dir, 'memory'), "wb")
                 pickle.dump([self.memory, self.iterations-i, self.time_step], f)
@@ -237,7 +241,7 @@ class SelfPlayAgent(Agent):
 
     def train_nnet(self, nnet, memory):  # Convertire memory[0] to Image se Graphic
         print("Training ...", flush=True)
-        for _ in tqdm(range(self.mini_batches)):
+        for _ in tqdm(range(min(self.mini_batches, (len(self.memory)//self.batch_size+1)))):
             minibatch = random.sample(memory, min(self.batch_size, len(memory)))
             training_states = {'input': np.array([row[0] for row in minibatch])}
             training_targets = {'policy_head': np.array([row[1] for row in minibatch])
@@ -263,10 +267,17 @@ class SelfPlayAgent(Agent):
         elif env.name == 'ConnectFour':
             test_env = ConnectFourEnv(env.representation, agent_first)
         elif env.name == 'Santorini':
-            test_env = SantoriniEnv(env.representation, agent_first)
+            test_env = SantoriniEnv(env.representation, agent_first, True, False, 0,
+                                    10)
         else:
             raise ValueError('Game provided does not exist!')
         test_env = OpponentWrapper(test_env, self.opponent)
+        if env.name == "Santorini":
+            root = env.mc_node
+            while not root.is_root():
+                root = root.parent
+            test_env.mc_node = root
+            test_env.mcts = True
         if not agent_first:
             init_state, action = test_env.reset(True)
             return test_env, init_state, action
@@ -364,7 +375,7 @@ def get_mcts(env):
 if __name__ == '__main__':
 
     # config_name = algorithm + '_' + environment + '_' + representation + '_' + opponent + '_' + agent_turn
-    config_name = "SelfPlay\\TicTacToe"
+    config_name = "SelfPlay\\Santorini"
     data_path = '..\\..\\FinalResults\\' + config_name + '\\'
     gif_path = data_path + 'GIFs\\'
     network_path = data_path + 'NetworkParameters\\'  # Final Network
@@ -374,15 +385,15 @@ if __name__ == '__main__':
     os.mkdir(gif_path)
     os.mkdir(network_path)
 
-    environment = TicTacToeEnv("Tabular", True)
+    environment = SantoriniEnv("Tabular", True)
     agent = SelfPlayAgent(observation_space=environment.observation_space, action_space=environment.action_space,
-                          learning_rate=0.01, episodes=64, iterations=50, test_games=11,
+                          learning_rate=0.01, episodes=1, iterations=2, test_games=1,
                           win_perc=0.55, tau=4, memory_size=10000,
-                          mini_batches=96, evaluation_steps=1, evaluation_games=10,
-                          running_average_length=100, gif_path=gif_path, opponent="MinMaxRandom",
+                          mini_batches=96, evaluation_steps=1, evaluation_games=1,
+                          running_average_length=100, gif_path=gif_path, opponent="MonteCarlo",
                           data_path=data_path,
-                          mcts_simulations=50, agent_turn_test=None,
-                          batch_size=32, checkpoint_dir=network_path, multithreading=False,
+                          mcts_simulations=15, agent_turn_test=None,
+                          batch_size=16, checkpoint_dir=network_path, multithreading=False,
                           tmp_path=tmp_path)
     trained = agent.learn(environment)
     trained.save(network_path)

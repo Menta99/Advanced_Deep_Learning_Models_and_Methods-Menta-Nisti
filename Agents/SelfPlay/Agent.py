@@ -215,8 +215,6 @@ class SelfPlayAgent(Agent):
                     break
             if env.name == "Santorini":
                 if env.goal(mcts.state, mcts.player_one_workers, mcts.player_two_workers, mcts.player_one)[1]:
-                #if len(env.actions(mcts.state, mcts.player_one_workers, mcts.player_two_workers,
-                #                   mcts.player_one)) == 0:  # Lost by no legal actions
                     memories = self.assign_reward(memories, env.goal(mcts.state, mcts.player_one_workers, mcts.player_two_workers, mcts.player_one)[0])
                     break
         return memories
@@ -227,7 +225,7 @@ class SelfPlayAgent(Agent):
             for memory in memories:
                 memory[2] = 0
         else:
-            reward = -reward # Reward -1
+            #reward = -reward # Reward -1
             for memory in memories:
                 memory[2] = reward  # 1 if winner == 0 else -1
                 reward = -reward

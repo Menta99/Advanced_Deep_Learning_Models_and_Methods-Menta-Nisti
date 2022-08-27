@@ -34,6 +34,7 @@ class SelfPlayAgent(Agent):
                  data_path='', memory_size = 2048,
                  mcts_simulations=640, agent_turn_test=None,
                  batch_size=32, checkpoint_dir='', multithreading=False,
+                 reset_challenger = True,
                  tmp_path = "tmp/nnet"):
         super(SelfPlayAgent, self).__init__(observation_space, action_space, batch_size, checkpoint_dir)
         self.learning_rate = learning_rate
@@ -62,6 +63,7 @@ class SelfPlayAgent(Agent):
         self.data_path = data_path
         self.tmp_path = tmp_path
         self.opponent = opponent
+        self.reset_challenger = reset_challenger
 
     def learn(self, env):
         self.network = SelfPlayNetwork(env, self.learning_rate).model
@@ -80,9 +82,9 @@ class SelfPlayAgent(Agent):
                     self.memory.extend(self.play_episode(env, self.network, self.mcts_simulations, self.tau))
                     while len(self.memory) > self.memory_size:
                         self.memory.pop(0)
-
-            #self.network.save(self.tmp_path)  # saves compiled state
-            #new_nnet = keras.models.load_model(self.tmp_path)
+            if self.reset_challenger:
+                self.network.save(self.tmp_path)  # saves compiled state
+                self.challenger = keras.models.load_model(self.tmp_path)
             self.challenger = self.train_nnet(self.challenger, self.memory)  # Create copy of nnet with same weights as nnet
 
             if self.multithreading:
@@ -375,7 +377,7 @@ def get_mcts(env):
 if __name__ == '__main__':
 
     # config_name = algorithm + '_' + environment + '_' + representation + '_' + opponent + '_' + agent_turn
-    config_name = "SelfPlay\\Santorini"
+    config_name = "SelfPlay\\TicTacToe"
     data_path = '..\\..\\FinalResults\\' + config_name + '\\'
     gif_path = data_path + 'GIFs\\'
     network_path = data_path + 'NetworkParameters\\'  # Final Network
@@ -385,15 +387,15 @@ if __name__ == '__main__':
     os.mkdir(gif_path)
     os.mkdir(network_path)
 
-    environment = SantoriniEnv("Tabular", True)
+    environment = TicTacToeEnv("Tabular", True)
     agent = SelfPlayAgent(observation_space=environment.observation_space, action_space=environment.action_space,
-                          learning_rate=0.01, episodes=1, iterations=2, test_games=1,
-                          win_perc=0.55, tau=4, memory_size=10000,
-                          mini_batches=96, evaluation_steps=1, evaluation_games=1,
-                          running_average_length=100, gif_path=gif_path, opponent="MonteCarlo",
+                          learning_rate=0.01, episodes=2, iterations=25, test_games=5,
+                          win_perc=0.55, tau=8, memory_size=14000,
+                          mini_batches=128, evaluation_steps=1, evaluation_games=5,
+                          running_average_length=100, gif_path=gif_path, opponent="MinMaxRandom",
                           data_path=data_path,
-                          mcts_simulations=15, agent_turn_test=None,
-                          batch_size=16, checkpoint_dir=network_path, multithreading=False,
+                          mcts_simulations=100, agent_turn_test=None, reset_challenger=True,
+                          batch_size=32, checkpoint_dir=network_path, multithreading=False,
                           tmp_path=tmp_path)
     trained = agent.learn(environment)
     trained.save(network_path)

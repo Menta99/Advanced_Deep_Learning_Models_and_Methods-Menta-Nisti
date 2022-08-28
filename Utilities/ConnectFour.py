@@ -1,7 +1,7 @@
 import gym
-from gym import spaces
 import numpy as np
 from PIL import Image
+from gym import spaces
 
 ROWS = 6
 COLUMNS = 7
@@ -32,6 +32,7 @@ class ConnectFourEnv(gym.Env):
         self.agent_first = agent_first
         assert self.representation in ['Tabular', 'Graphic']
         self.done = False
+        self.exploration_parameter = 1
         self.reset()
 
     def _get_observation(self):

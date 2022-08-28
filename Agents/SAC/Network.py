@@ -1,6 +1,7 @@
-import tensorflow as tf
 import os
 from functools import reduce
+
+import tensorflow as tf
 
 
 class SingleNetwork(tf.keras.Model):

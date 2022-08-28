@@ -1,9 +1,7 @@
-import tensorflow as tf
-import numpy as np
-import pandas as pd
 import itertools
 import os
-import sys
+
+import tensorflow as tf
 
 from Agents.DDDQN.DDDQNAgent import DDDQNAgent
 from Agents.SAC.SACAgent import SACAgent
@@ -401,7 +399,7 @@ def get_agent(config_env, config_algorithm, config_network_dicts, config_network
 
 if __name__ == '__main__':
     for config in itertools.product(*[['DDDQN'], ['Santorini'],
-                                      ['Tabular', 'Graphic'], ['MonteCarlo']]):
+                                      ['Graphic'], ['MonteCarlo']]):
         print('Executing the following config: {}'.format(config))
         algorithm = config[0]
         environment = config[1]
@@ -428,7 +426,7 @@ if __name__ == '__main__':
             continue
 
         config_name = algorithm + '_' + environment + '_' + representation + '_' + opponent + '_' + agent_turn
-        data_path = '..\\RedoResults\\' + config_name + '\\'
+        data_path = '..\\Results\\Version-2\\' + config_name + '\\'
         gif_path = data_path + 'GIFs\\'
         network_path = data_path + 'NetworkParameters\\'
         os.mkdir(data_path)
@@ -440,7 +438,7 @@ if __name__ == '__main__':
         network_dicts = get_network_dicts(algorithm, representation, env)
         agent = get_agent(env, algorithm, network_dicts, network_path, test_params)
 
-        wizard = TurnGameTrainWizard(environment=environment,
+        wizard = TurnGameTrainWizard(environment_name=environment,
                                      agent=agent,
                                      objective_score=1,
                                      running_average_length=100,

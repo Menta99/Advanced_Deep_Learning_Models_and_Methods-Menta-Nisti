@@ -1,6 +1,7 @@
-import tensorflow as tf
-import traceback
 import json
+import traceback
+
+import tensorflow as tf
 
 
 class NetworkBuilder:

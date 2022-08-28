@@ -151,7 +151,7 @@ class SelfPlayNetwork:
         return x
 
     def predict(self, x):
-        return self.model(x)#.predict(x=x, verbose=0)
+        return self.model(x)
 
     def fit(self, states, targets, epochs, verbose, validation_split, batch_size):
         return self.model.fit(states, targets, epochs=epochs, verbose=verbose, validation_split=validation_split,

@@ -2,12 +2,11 @@ import gc
 import pickle
 
 import numpy as np
+from termcolor import colored
 
 from Utilities.ConnectFour import ConnectFourEnv
 from Utilities.Santorini import SantoriniEnv
 from Utilities.TicTacToe import TicTacToeEnv
-from termcolor import colored
-
 from Utilities.Wrappers import OpponentWrapper
 
 

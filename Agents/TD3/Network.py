@@ -1,7 +1,8 @@
-import tensorflow as tf
 import copy
 import os
 from functools import reduce
+
+import tensorflow as tf
 
 
 class CriticNetwork(tf.keras.Model):

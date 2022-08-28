@@ -1,8 +1,9 @@
-import gym
 from copy import copy
+
+import gym
+import numpy as np
 from PIL import Image
 from gym import spaces
-import numpy as np
 
 BOARD_SIZE = 3
 ACTION_SPACE = 9
@@ -29,6 +30,7 @@ class TicTacToeEnv(gym.Env):
         self.state = np.zeros((3, 3))  # ACTION_SPACE * [0]
         self.turn = 0
         self.done = False
+        self.exploration_parameter = 1
         self.reset()
 
     def _get_observation(self):

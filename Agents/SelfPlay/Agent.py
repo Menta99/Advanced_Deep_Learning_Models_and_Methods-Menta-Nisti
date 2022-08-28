@@ -31,11 +31,11 @@ class SelfPlayAgent(Agent):
                  win_perc=0.55, tau=0,
                  mini_batches=100, evaluation_steps=100, evaluation_games=10,
                  running_average_length=100, gif_path='', opponent="Random",
-                 data_path='', memory_size = 2048,
+                 data_path='', memory_size=2048,
                  mcts_simulations=640, agent_turn_test=None,
                  batch_size=32, checkpoint_dir='', multithreading=False,
-                 reset_challenger = True,
-                 tmp_path = "tmp/nnet"):
+                 reset_challenger=True,
+                 tmp_path="tmp/nnet"):
         super(SelfPlayAgent, self).__init__(observation_space, action_space, batch_size, checkpoint_dir)
         self.learning_rate = learning_rate
         self.episodes = episodes
@@ -64,66 +64,59 @@ class SelfPlayAgent(Agent):
         self.tmp_path = tmp_path
         self.opponent = opponent
         self.reset_challenger = reset_challenger
+        self.num_players = 2
+        self.players = []
 
     def learn(self, env):
         self.network = SelfPlayNetwork(env, self.learning_rate).model
         self.network.save(self.tmp_path)  # saves compiled state
-        self.challenger = keras.models.load_model(self.tmp_path)
+        for i in range(self.num_players):
+            self.players.append(keras.models.load_model(self.tmp_path))
+        # FILL BUFFER
+        while len(self.memory) < self.mini_batches * self.batch_size:
+            print("Filling Buffer ...")
+            self.memory.extend(self.play_episode(env, self.network, self.mcts_simulations, 99))
         for i in range(self.iterations):
             print("iteration: ", i)
-            if self.multithreading:
-                for j in range(math.ceil(self.episodes / self.cpu_count)):
-                    with Pool(self.cpu_count) as p:
-                        self.memory.extend(p.map(self.play_episode, [(env, self.network, self.mcts_simulations) for _ in
-                                                                     range(self.cpu_count)]))
-                        p.close()
-            else:
-                for _ in tqdm(range(self.episodes)):
-                    self.memory.extend(self.play_episode(env, self.network, self.mcts_simulations, self.tau))
-                    while len(self.memory) > self.memory_size:
-                        self.memory.pop(0)
+            for _ in tqdm(range(self.episodes)):
+                self.memory.extend(self.play_episode(env, self.network, self.mcts_simulations, self.tau))
+                while len(self.memory) > self.memory_size:
+                    self.memory.pop(0)
             if self.reset_challenger:
                 self.network.save(self.tmp_path)  # saves compiled state
-                self.challenger = keras.models.load_model(self.tmp_path)
-            self.challenger = self.train_nnet(self.challenger, self.memory)  # Create copy of nnet with same weights as nnet
 
-            if self.multithreading:
-                for _ in range(math.ceil(self.test_games / self.cpu_count)):
-                    with Pool(self.cpu_count) as p:
-                        win_perc = p.map(self.compare_players,
-                                         [(new_nnet, self.network, env) for _ in range(self.cpu_count)])
-                        p.close()
-                        win_perc = sum(win_perc) / len(win_perc)
-            else:
-                win_perc = 0
-                print("Comparing Networks ...", flush=True)
-                for _ in tqdm(range(self.test_games)):
-                    win_perc += self.compare_players(self.challenger, self.network, env)
-                win_perc = ((win_perc / self.test_games) + 1)/2
+            for j in range(self.num_players):
+                self.train_nnet(self.players[j], self.memory)  # Create copy of nnet with same weights as nnet
+
+            win_perc = 0
+            print("Comparing Networks ...", flush=True)
+            for _ in tqdm(range(self.test_games)):
+                win_perc += self.compare_players(self.players[0], self.players[1], env)
+            win_perc = ((win_perc / self.test_games) + 1) / 2
 
             if win_perc > self.win_perc:
                 print("Updated Network", flush=True)
-                self.challenger.save(self.tmp_path)
-                self.network = keras.models.load_model(self.tmp_path)
-                self.num_updates += 1
+                self.network = self.players[0]
                 f = open(os.path.join(self.checkpoint_dir, 'memory'), "wb")
-                pickle.dump([self.memory, self.iterations-i, self.time_step], f)
+                pickle.dump([self.memory, self.iterations - i, self.time_step], f)
+                f.close()
+            elif win_perc < (1 - self.win_perc):
+                print("Updated Network", flush=True)
+                self.network = self.players[1]  # keras.models.load_model(self.tmp_path)
+                f = open(os.path.join(self.checkpoint_dir, 'memory'), "wb")
+                pickle.dump([self.memory, self.iterations - i, self.time_step], f)
                 f.close()
             if self.time_step > self.evaluation_steps * self.index:
                 self.test_agent(env)
         return self.network
 
     def act(self, observation, env, agent_first, mcts):
-        #mcts = get_mcts(env)
-        #mcts.state = mcts.get_relative_state(env.state, env)
         for _ in range(self.mcts_simulations):
             mcts.rollout_simulation(env, self.network)
         actions = mcts.get_probs(env.action_space.n, env)
         action = np.argmax(actions)
-        # action = np.where(actions == np.random.choice(actions, p=actions))
         action = to_action(action, env.name)
-        # action, _ = mcts.select_next()
-        return action  # ast.literal_eval(action)
+        return action
 
     def store(self, initial_state, action, reward, final_state, terminal):
         pass
@@ -224,7 +217,9 @@ class SelfPlayAgent(Agent):
                     break
             if env.name == "Santorini":
                 if env.goal(mcts.state, mcts.player_one_workers, mcts.player_two_workers, mcts.player_one)[1]:
-                    memories = self.assign_reward(memories, env.goal(mcts.state, mcts.player_one_workers, mcts.player_two_workers, mcts.player_one)[0])
+                    memories = self.assign_reward(memories,
+                                                  env.goal(mcts.state, mcts.player_one_workers, mcts.player_two_workers,
+                                                           mcts.player_one)[0])
                     break
         return memories
 
@@ -234,16 +229,14 @@ class SelfPlayAgent(Agent):
             for memory in memories:
                 memory[2] = 0
         else:
-            #reward = -reward # Reward -1
             for memory in memories:
                 memory[2] = reward  # 1 if winner == 0 else -1
                 reward = -reward
-                # winner = not winner
         return memories
 
     def train_nnet(self, nnet, memory):  # Convertire memory[0] to Image se Graphic
         print("Training ...", flush=True)
-        for _ in tqdm(range(min(self.mini_batches, (len(self.memory)//self.batch_size+1)))):
+        for _ in tqdm(range(min(self.mini_batches, (len(self.memory) // self.batch_size + 1)))):
             minibatch = random.sample(memory, min(self.batch_size, len(memory)))
             training_states = {'input': np.array([row[0] for row in minibatch])}
             training_targets = {'policy_head': np.array([row[1] for row in minibatch])
@@ -252,7 +245,7 @@ class SelfPlayAgent(Agent):
 
             nnet.fit(training_states, training_targets, epochs=1, verbose=0, validation_split=0,
                      batch_size=self.batch_size)
-        return nnet
+        return  # nnet
 
     def test_agent(self, env):
         f = open(self.data_path + 'scores.pkl', 'wb')
@@ -303,10 +296,6 @@ class SelfPlayAgent(Agent):
         else:
             test_env, state_init = self.init_test(agent_first, env)
         mcts = get_mcts(test_env)
-        #if not agent_first:
-        #    mcts.expand(test_env)
-        #    mcts.evaluate(self.network, test_env)
-        #    mcts = mcts.children[str(action)]
         game_frame = []
         score = 0
         done = False
@@ -365,76 +354,11 @@ class SelfPlayAgent(Agent):
 def get_mcts(env):
     if env.name == "Santorini":
         mcts = SelfPlayMCTS(prior_action=None, value=None, parent=None, state=copy.copy(env.state),
-                            player_one_workers=copy.copy(env.player_one_workers), player_two_workers=copy.copy(env.player_two_workers),
+                            player_one_workers=copy.copy(env.player_one_workers),
+                            player_two_workers=copy.copy(env.player_two_workers),
                             player_one=env.player_one)
     elif env.name == "ConnectFour":
         mcts = SelfPlayMCTS(prior_action=None, value=None, parent=None, state=copy.copy(env.state))
     elif env.name == "TicTacToe":
         mcts = SelfPlayMCTS(prior_action=None, value=None, parent=None, state=copy.copy(env.state))
     return mcts
-
-
-if __name__ == '__main__':
-
-    # config_name = algorithm + '_' + environment + '_' + representation + '_' + opponent + '_' + agent_turn
-    config_name = "SelfPlay\\TicTacToe"
-    data_path = '..\\..\\FinalResults\\' + config_name + '\\'
-    gif_path = data_path + 'GIFs\\'
-    network_path = data_path + 'NetworkParameters\\'  # Final Network
-    tmp_path = data_path + "tmp\\"
-    os.mkdir(data_path)
-    os.mkdir(tmp_path)
-    os.mkdir(gif_path)
-    os.mkdir(network_path)
-
-    environment = TicTacToeEnv("Tabular", True)
-    agent = SelfPlayAgent(observation_space=environment.observation_space, action_space=environment.action_space,
-                          learning_rate=0.01, episodes=2, iterations=25, test_games=5,
-                          win_perc=0.55, tau=8, memory_size=14000,
-                          mini_batches=128, evaluation_steps=1, evaluation_games=5,
-                          running_average_length=100, gif_path=gif_path, opponent="MinMaxRandom",
-                          data_path=data_path,
-                          mcts_simulations=100, agent_turn_test=None, reset_challenger=True,
-                          batch_size=32, checkpoint_dir=network_path, multithreading=False,
-                          tmp_path=tmp_path)
-    trained = agent.learn(environment)
-    trained.save(network_path)
-
-"""
-    config_name = "SelfPlay\\ConnectFour"
-    data_path = '..\\..\\FinalResults\\' + config_name + '\\'
-    gif_path = data_path + 'GIFs\\'
-    network_path = data_path + 'NetworkParameters\\'  # Final Network
-    os.mkdir(data_path)
-    os.mkdir(gif_path)
-    os.mkdir(network_path)
-
-    environment = ConnectFourEnv("Tabular", True)
-    agent = SelfPlayAgent(observation_space=environment.observation_space, action_space=environment.action_space,
-                          learning_rate=0.01, episodes=16, iterations=60, test_games=11,
-                          win_perc=0.55, tau=7, memory_size=18000,
-                          mini_batches=256, evaluation_steps=1, evaluation_games=10,
-                          running_average_length=100, gif_path=gif_path, opponent="MinMaxRandom",
-                          data_path=data_path,
-                          mcts_simulations=60, agent_turn_test=None,
-                          batch_size=32, checkpoint_dir=network_path, multithreading=False)
-    trained = agent.learn(environment)
-    trained.save('tmp/trained/' + environment.name)
-"""
-
-"""
-if __name__ == '__main__':
-    # new_nnet = keras.models.load_model('tmp/nnet/TicTacToe')
-    env = TicTacToeEnv("Tabular", True)
-    agent = SelfPlayAgent(observation_space=env.observation_space, action_space=env.action_space, batch_size=16,
-                          checkpoint_dir='tmp/selfplayagent/' + env.name, mini_batches=16, episodes=30,
-                          mcts_simulations=10, iterations=10, learning_rate=0.001)
-    agent.model = SelfPlayNetwork(env, 0.01)
-    env.reset()
-    # env.render_board(env.state)
-    # for _ in range(5):
-    memories = agent.play_episode(env, agent.model, 10)
-    for memory in memories:
-        env.render_board(memory[0]).show()
-        print(memory[2])
-"""

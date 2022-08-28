@@ -1,9 +1,8 @@
-from copy import copy
 import math
+from copy import copy
+
 import numpy as np
 import tensorflow as tf
-import random
-import gc
 
 ACTIONS = {
     0: [1, -1],
@@ -37,14 +36,6 @@ class MC_Tree:
                 if str(action) not in self.children:
                     state = environment.result(self.state, action)
                     self.children[str(action)] = MC_Tree(state=copy(state), parent=self)
-
-        # if environment.name == "ConnectFour":
-        #    actions = environment.actions(self.state)
-        #    for action in actions:
-        #        if str(action) not in self.children:
-        #            state = environment.result(self.state, action)
-        #            self.children[str(action)] = MC_Tree(state=state.copy(), parent=self)
-
         if environment.name == "Santorini":
             actions = environment.actions(self.state, self.player_one_workers, self.player_two_workers, self.player_one)
             for action in actions:
@@ -110,14 +101,9 @@ class MC_Tree:
             while not environment.goal(state)[1]:
                 action = environment.get_random_action(state)
                 if action is not None:
-                    state = environment.result(state)
+                    state = environment.result(state, action)
                 else:
                     break
-                # actions = environment.actions(state)
-                # if len(actions) > 0:
-                #     state = environment.result(state, actions[np.random.choice(len(actions))])
-                # else:
-                #     break
             player_one = (1 if np.count_nonzero(state == 1) == np.count_nonzero(state == -1) else -1) == 1
             reward = player_one == environment.agent_first
 
@@ -125,14 +111,9 @@ class MC_Tree:
             while not environment.goal(state)[1]:
                 action = environment.get_random_action(state)
                 if action is not None:
-                    state = environment.result(state)
+                    state = environment.result(state, action)
                 else:
                     break
-                # actions = environment.actions(state)
-                # if len(actions) > 0:
-                #     state = environment.result(state)
-                # else:
-                #     break
             player_one = (1 if np.count_nonzero(state == 1) == np.count_nonzero(state == -1) else -1) == 1
             reward = player_one == environment.agent_first
 
@@ -146,14 +127,7 @@ class MC_Tree:
                                                                            player_one, 4)
                 else:
                     break
-                # actions = environment.actions(state, player_one_workers, player_two_workers, player_one)
-                # if len(actions) > 0:
-                #     state, player_one_workers, player_two_workers, player_one, _ = environment.result(state, actions[
-                #         np.random.choice(len(actions))], player_one_workers, player_two_workers, player_one, 4)
-                # else:
-                #     break
             reward = player_one == environment.agent_first  # siamo contenti se player_one è agent_first
-        # reward = environment.goal(state)[0] # 1 if player one wins else -1
         # Backpropagation
         for node in to_update:
             node.update(reward, environment.exploration_parameter)
@@ -175,7 +149,7 @@ class MC_Tree:
             else:
                 return -state
 
-        elif env.name == "Santorini": #FIX
+        elif env.name == "Santorini":  # FIX
             if self.player_one:
                 return self.state
             else:
@@ -215,52 +189,28 @@ class SelfPlayMCTS(MC_Tree):
         else:
             value = environment.goal(node.state, node.player_one_workers, node.player_two_workers, node.player_one)[0] \
                 if environment.name == "Santorini" else environment.goal(node.state)[0]
-
-        """
-        if environment.name == "Santorini":
-            actual_player = node.player_one
-            if value == 1 and actual_player:
-                pass
-            elif value == 1 and not actual_player:
-                value = -value
-            elif value == -1 and not actual_player:
-                value = -value
-            elif value == -1 and actual_player:
-                pass
-        elif environment.name == "TicTacToe" or environment.name == "ConnectFour":
-            actual_player = environment.get_mark(node.state)
-            if value == 0:
-                pass
-            elif value == 1 and actual_player == 1:
-                pass
-            elif value == 1 and actual_player == -1:
-                value = -value
-            elif value == -1 and actual_player == -1:
-                value = -value
-            elif value == -1 and actual_player == 1:
-                pass
-        """
         # Backpropagation
         to_update.reverse()
-        #value = node.V
+        # value = node.V
         for n in to_update:
             n.update(value)
             value = -value
 
     def evaluate(self, network, env):
         if env.representation == "Graphic":
-            predictions = network.predict(x= tf.expand_dims(tf.convert_to_tensor(env.render_board(self.get_relative_state(env))), axis = 0), verbose = 0)
+            predictions = network.predict(
+                x=tf.expand_dims(tf.convert_to_tensor(env.render_board(self.get_relative_state(env))), axis=0),
+                verbose=0)
         else:
             predictions = network(state_to_input_model(self.get_relative_state(self.state, env), env))
-            #predictions = network.predict(x=state_to_input_model(self.get_relative_state(env.name, self.player_one), env), verbose = 0)  # reshape for the network
         value = np.array(predictions[0])
         prior_actions = np.array(predictions[1]).squeeze()
-        prior_actions[prior_actions<0] = 0
+        prior_actions[prior_actions < 0] = 0
         for i in range(len(prior_actions)):
             action = to_action(i, env.name)
             if str(action) not in self.children:
                 prior_actions[i] = 0
-        prior_actions = prior_actions / sum(prior_actions) if sum(prior_actions) !=0 else prior_actions
+        prior_actions = prior_actions / sum(prior_actions) if sum(prior_actions) != 0 else prior_actions
         if self.is_root():
             self.prior_actions = 0.75 * prior_actions + 0.25 * np.random.dirichlet([0.03] * len(prior_actions))
         else:
@@ -278,7 +228,6 @@ class SelfPlayMCTS(MC_Tree):
             for action in actions:
                 if str(action) not in self.children:
                     state = environment.result(self.state, action)
-                    #state = self.get_relative_state(state, environment)
                     self.children[str(action)] = SelfPlayMCTS(prior_action=None,
                                                               value=None,
                                                               state=copy(state),
@@ -308,7 +257,6 @@ class SelfPlayMCTS(MC_Tree):
         # at = argmax(Q(st,a) + U(st,a)  where U(st, a) = Cpuct * P(s,a) * (sum(N(s,b))^0.5) / (1 + N(s,a))
 
     def update(self, value):
-        #v = value if #self.player_one == winner else -value
         self.N += 1
         self.W += value
         self.Q = self.W / self.N
@@ -320,6 +268,7 @@ class SelfPlayMCTS(MC_Tree):
             if str(action) in self.children:
                 pi[i] = self.children[str(action)].N
         return pi / sum(pi)
+
 
 def to_action(value, game):
     if game == "TicTacToe":
@@ -339,4 +288,4 @@ def state_to_input_model(state, env):
     elif env.name == "ConnectFour":
         return state.reshape(-1, 7, 6, 1) if env.representation == "Tabular" else state
     elif env.name == "Santorini":
-        return state.reshape(-1, 5, 5, 6) if env.representation == "Tabular" else state#.reshape(-1, 160, 160, 1)
+        return state.reshape(-1, 5, 5, 6) if env.representation == "Tabular" else state  # .reshape(-1, 160, 160, 1)

@@ -44,7 +44,7 @@ the script will take care of saving both the training data, the game GIFs and th
 To plot the resulting curves (game reward and game length) you can use the [Displayer](https://github.com/Menta99/Advanced_Deep_Learning_Models_and_Methods-Menta-Nisti/blob/master/Utilities/Displayer.py) script following the same configuration procedure as above.
 
 <sup><sup>*Not all the combinations are supported due to the incompatible structure of agents and environments  
-<sup><sup>**If you don't have a powerful GPU to train the models we suggest to use the [Notebook](https://github.com/Menta99/Advanced_Deep_Learning_Models_and_Methods-Menta-Nisti/blob/master/Utilities/TurnGameTester.ipynb) we have prepared which contains both testing and visualization exploiting the [Google Colab](https://colab.research.google.com/) service
+<sup><sup>**If you don't have a powerful GPU to train the models we suggest to use the [Notebook](https://github.com/Menta99/Advanced_Deep_Learning_Models_and_Methods-Menta-Nisti/blob/master/Utilities/TurnGameTesterNotebook.ipynb) we have prepared which contains both testing and visualization exploiting the [Google Colab](https://colab.research.google.com/) service
 
 ## Group Members
 - [__Andrea Menta__](https://github.com/Menta99)

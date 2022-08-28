@@ -1,7 +1,8 @@
+import gym
 import numpy as np
 import tensorflow as tf
+
 from Utilities.SegmentTree import SumSegmentTree, MinSegmentTree
-import gym
 
 
 class ReplayBuffer:

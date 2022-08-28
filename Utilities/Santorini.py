@@ -1,13 +1,11 @@
 import itertools
+
 import gym
-from gym import spaces
 import numpy as np
 from PIL import Image, ImageDraw
+from gym import spaces
 from tqdm import tqdm
-import math
-import copy
-import sys
-import random
+
 from Utilities.MCTS import MC_Tree
 
 BOARD_SIZE = 5
@@ -64,7 +62,6 @@ class SantoriniEnv(gym.Env):
         if self.random_init:
             self.turn = 4
             self._assign_worker(None)
-        #self.reset()
         self.mcts = mcts
         self.initial_simulations = initial_simulations
         self.normal_simulations = normal_simulations
@@ -83,7 +80,6 @@ class SantoriniEnv(gym.Env):
         if self.random_init:
             self.turn = 4
             self._assign_worker(None)
-        #self.mc_node = MC_Tree(None, self.state, self.player_one_workers, self.player_two_workers, self.player_one)
         while not self.mc_node.is_root():
             self.mc_node = self.mc_node.parent
         return self._get_observation()
@@ -113,12 +109,6 @@ class SantoriniEnv(gym.Env):
             self.player_two_workers[1] = [3, 1]
             self.state[3][1][LAYERS['player2']] = -1
             return
-            # coord = [np.random.choice(range(BOARD_SIZE)), np.random.choice(range(BOARD_SIZE))]
-            # if all(self.state[coord[0]][coord[1]][LAYERS['player1']:] == 0):
-            #    self.state[coord[0]][coord[1]][LAYERS['player1'] + player_num] = 1
-            #    return coord
-            # else:
-            #    return self._assign_worker(player_num)
         elif action is not None:
             if all(self.state[action[5]][action[6]][LAYERS['player1']:] == 0):
                 self.state[action[5]][action[6]][LAYERS['player1'] + player_num] = 1

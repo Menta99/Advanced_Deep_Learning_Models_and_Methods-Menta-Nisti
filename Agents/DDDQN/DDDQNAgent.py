@@ -1,12 +1,10 @@
-import os
-import pickle
+import numpy as np
+import tensorflow as tf
 
 from Agents.Agent import Agent
 from Agents.DDDQN.Network import DQNetwork, DuelingNetwork
 from Utilities.NetworkBuilder import NetworkBuilder
 from Utilities.ReplayBuffer import ReplayBuffer, PrioritizedReplayBuffer
-import tensorflow as tf
-import numpy as np
 
 
 def update_network_parameters(network, target_network, target_update_coefficient):

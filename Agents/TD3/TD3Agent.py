@@ -1,12 +1,10 @@
-import os
-import pickle
+import numpy as np
+import tensorflow as tf
 
 from Agents.Agent import Agent
 from Agents.TD3.Network import ActorNetwork, CriticNetwork
 from Utilities.NetworkBuilder import NetworkBuilder
 from Utilities.ReplayBuffer import PrioritizedReplayBuffer
-import tensorflow as tf
-import numpy as np
 
 
 class TD3Agent(Agent):
@@ -189,9 +187,9 @@ class TD3Agent(Agent):
 
     def save(self):
         print('Saving models and parameters...')
-        f = open(os.path.join(self.checkpoint_dir, '_params'), "wb")
-        pickle.dump([self.memory, self.learn_step_counter, self.time_step], f)
-        f.close()
+        #f = open(os.path.join(self.checkpoint_dir, '_params'), "wb")
+        #pickle.dump([self.memory, self.learn_step_counter, self.time_step], f)
+        #f.close()
         self.actor_net.save_weights(self.actor_net.checkpoint_file)
         self.critic_1_net.save_weights(self.critic_1_net.checkpoint_file)
         self.critic_2_net.save_weights(self.critic_2_net.checkpoint_file)
@@ -201,9 +199,9 @@ class TD3Agent(Agent):
 
     def load(self):
         print('Loading models and parameters...')
-        f = open(os.path.join(self.checkpoint_dir, '_params'), "rb")
-        self.memory, self.learn_step_counter, self.time_step = pickle.load(f)
-        f.close()
+        #f = open(os.path.join(self.checkpoint_dir, '_params'), "rb")
+        #self.memory, self.learn_step_counter, self.time_step = pickle.load(f)
+        #f.close()
         self.actor_net.load_weights(self.actor_net.checkpoint_file)
         self.critic_1_net.load_weights(self.critic_1_net.checkpoint_file)
         self.critic_2_net.load_weights(self.critic_2_net.checkpoint_file)

@@ -51,7 +51,7 @@ def get_env(config_environment, config_representation):
         setup['evaluation_games'] = 5
         setup['test_games'] = 5
         setup['opponent'] = 'MonteCarlo'
-        setup['mcts_simulations'] = 50
+        setup['mcts_simulations'] = 400
         setup['batch_size'] = 32
         return SantoriniEnv(config_representation, True), setup
 

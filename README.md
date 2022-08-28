@@ -24,7 +24,12 @@ We have selected the Deep Reinforcement Learning field and the following 3 paper
 We have then applied these 3 approaches in the zero-sum games field. 
 
 ## Installation
+The `requirements.txt` file list all Python libraries that this repository
+depend on, and they will be installed using:
 
+```
+pip install -r requirements.txt
+```
 ## Repository Structure
 To reproduce the results you can use the [DataGenerator](https://github.com/Menta99/Advanced_Deep_Learning_Models_and_Methods-Menta-Nisti/blob/master/Utilities/DataGenerator.py) script:
 You just need to include in the iterator the configurations to be tested, specifically you can choose*:

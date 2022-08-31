@@ -9,7 +9,7 @@ from Utilities.TicTacToe import TicTacToeEnv
 def get_env(config_environment, config_representation):
     setup = {
         "learning_rate": 0.01,
-        "test_games": 5,
+        "test_games": 10,
         "win_perc": 0.55,
         "evaluation_steps": 1,
         "running_average_length": 100,
@@ -23,31 +23,31 @@ def get_env(config_environment, config_representation):
     if config_environment == 'TicTacToe':
         setup['episodes'] = 64
         setup['iterations'] = 25
-        setup['tau'] = 4
-        setup['memory_size'] = 10000
-        setup['mini_batches'] = 96
+        setup['tau'] = 0
+        setup['memory_size'] = 2560
+        setup['mini_batches'] = 32
         setup['evaluation_games'] = 10
         setup['opponent'] = 'MinMaxRandom'
         setup['mcts_simulations'] = 100
-        setup['batch_size'] = 32
+        setup['batch_size'] = 16
         return TicTacToeEnv(config_representation, True), setup
     elif config_environment == 'ConnectFour':
-        setup['episodes'] = 32
+        setup['episodes'] = 20
         setup['iterations'] = 25
-        setup['tau'] = 7
-        setup['memory_size'] = 15000
-        setup['mini_batches'] = 128
+        setup['tau'] = 10
+        setup['memory_size'] = 2500
+        setup['mini_batches'] = 28
         setup['evaluation_games'] = 10
         setup['opponent'] = 'MinMaxRandom'
         setup['mcts_simulations'] = 100
-        setup['batch_size'] = 32
+        setup['batch_size'] = 16
         return ConnectFourEnv(config_representation, True), setup
     elif config_environment == 'Santorini':
         setup['episodes'] = 20
         setup['iterations'] = 25
-        setup['tau'] = 8
-        setup['memory_size'] = 30000
-        setup['mini_batches'] = 64
+        setup['tau'] = 12
+        setup['memory_size'] = 3000
+        setup['mini_batches'] = 16
         setup['evaluation_games'] = 5
         setup['test_games'] = 5
         setup['opponent'] = 'MonteCarlo'
@@ -58,7 +58,7 @@ def get_env(config_environment, config_representation):
 
 if __name__ == '__main__':
     representation = "Tabular"
-    env_name = "TicTacToe"
+    env_name = "ConnectFour"
     config_name = 'SelfPlay-' + env_name
     data_path = '..\\Results\\' + config_name + '\\'
     gif_path = data_path + 'GIFs\\'

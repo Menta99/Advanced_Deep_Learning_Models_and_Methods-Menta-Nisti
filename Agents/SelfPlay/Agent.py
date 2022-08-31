@@ -198,7 +198,7 @@ class SelfPlayAgent(Agent):
             for _ in range(simulation_num):
                 mcts.rollout_simulation(env, nnet)
             memories.append(
-                [mcts.state, mcts.get_probs(env.action_space.n, env), None])
+                [mcts.get_relative_state(mcts.state, env), mcts.get_probs(env.action_space.n, env), None])
             actions = mcts.get_probs(env.action_space.n, env)
             if tau > 0:
                 action = np.where(actions == np.random.choice(actions, p=actions))[0][0]
@@ -229,6 +229,7 @@ class SelfPlayAgent(Agent):
             for memory in memories:
                 memory[2] = 0
         else:
+            reward = 1
             for memory in memories:
                 memory[2] = reward  # 1 if winner == 0 else -1
                 reward = -reward

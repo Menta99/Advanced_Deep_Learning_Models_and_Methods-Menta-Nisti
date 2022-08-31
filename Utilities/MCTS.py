@@ -189,6 +189,8 @@ class SelfPlayMCTS(MC_Tree):
         else:
             value = environment.goal(node.state, node.player_one_workers, node.player_two_workers, node.player_one)[0] \
                 if environment.name == "Santorini" else environment.goal(node.state)[0]
+            if value != 0:
+                value = 1
         # Backpropagation
         to_update.reverse()
         # value = node.V

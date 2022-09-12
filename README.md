@@ -12,6 +12,8 @@ The repository is organized as follows
 * [Agents](https://github.com/Menta99/Advanced_Deep_Learning_Models_and_Methods-Menta-Nisti/tree/master/Agents) which contains the Agents implemented in the project, namely [Dueling Double Deep Q-Network](https://arxiv.org/abs/1511.06581), [Soft Actor-Critic](https://arxiv.org/abs/1801.01290) and [AlphaGo Zero](https://www.nature.com/articles/nature24270)
 * [Utilities](https://github.com/Menta99/Advanced_Deep_Learning_Models_and_Methods-Menta-Nisti/tree/master/Utilities) which includes the infrastructure used for the tests, including the environment of the 3 implemented zero-sum games, specifically TicTacToe, ConnectFour and Santorini
 
+Finally you can find an extended [report](https://github.com/Menta99/Advanced_Deep_Learning_Models_and_Methods-Menta-Nisti/blob/master/paper.pdf) of this work, containing the complete description of the approach and the results obtained, and a brief [presentation](https://github.com/Menta99/Advanced_Deep_Learning_Models_and_Methods-Menta-Nisti/blob/master/presentation.pptx) of it.
+
 ## Project Overview
 The project consists in analyzig, reviewing and re-implementing 3 papers belonging to a field of application of Deep Learning of our choice, and in applying the techniques proposed in a novel context.
 
